@@ -1,0 +1,11 @@
+# GPU-specific dependencies (CUDA)
+torch>=2.1.0+cu118
+torchaudio>=2.1.0+cu118
+
+# Faster inference
+nvidia-cublas-cu11>=11.10.3.66
+nvidia-cudnn-cu11>=8.5.0.96
+
+# Note: Install with:
+# pip install -r requirements.txt
+# pip install -r requirements-gpu.txt --extra-index-url https://download.pytorch.org/whl/cu118

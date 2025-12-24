@@ -1,0 +1,36 @@
+# AI Copilot - GPU TURBO Configuration
+# Otimizado para RTX 4070 Super
+
+llm:
+  default_provider: "local"
+  local:
+    base_url: "http://localhost:11434"
+    model: "llama3.1:8b"
+
+audio:
+  sample_rate: 16000
+  vad_threshold: 0.012
+  min_speech_duration_ms: 600
+  max_speech_gap_ms: 1200
+
+asr:
+  model: "medium"
+  device: "cuda"
+  language: "pt"
+  word_timestamps: true
+  fp16: true
+  temperature: 0.0
+  beam_size: 5
+  best_of: 3
+
+context:
+  window_size: 10
+
+ui:
+  width: 450
+  height: 350
+  opacity: 0.95
+
+logging:
+  level: "INFO"
+  file: "logs/ai-copilot.log"

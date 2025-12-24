@@ -1,0 +1,39 @@
+# Core dependencies  
+# Note: Using openai-whisper (original) instead of faster-whisper for Windows compatibility
+openai-whisper>=20231117
+torch>=2.1.0
+# transformers>=4.35.0  # Temporariamente comentado (requer Rust)
+# sentence-transformers>=2.2.2  # Temporariamente comentado (requer transformers)
+
+# Audio processing
+sounddevice>=0.4.6
+# webrtcvad>=2.0.10  # Requer compilação - usar Silero VAD alternativa
+pydub>=0.25.1
+
+# NLP (versões simplificadas sem Rust)
+# spacy>=3.7.0  # Requer compilação
+scikit-learn>=1.3.0
+
+# Vision/OCR
+pytesseract>=0.3.10
+opencv-python>=4.8.0
+Pillow>=10.0.0
+mss>=9.0.1
+
+# LLM clients (apenas OpenAI por enquanto, Anthropic requer compilação)
+openai>=1.3.0
+# anthropic>=0.8.0  # Requer compilação
+requests>=2.31.0
+
+# UI  
+PyQt6>=6.6.0
+pywin32>=306; platform_system=="Windows"
+pynput>=1.7.6  # Global hotkeys
+
+# Configuration & Utils
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+pydantic>=2.5.0
+
+# Monitoring
+psutil>=5.9.0

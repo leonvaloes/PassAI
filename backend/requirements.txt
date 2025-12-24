@@ -1,0 +1,21 @@
+# Backend API Requirements
+
+# Core dependencies (from existing)
+openai-whisper>=20231117
+torch>=2.1.0
+sounddevice>=0.4.6
+scikit-learn>=1.3.0
+pyyaml>=6.0.1
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+psutil>=5.9.0
+requests>=2.31.0
+
+# LLM clients
+openai>=1.3.0
+
+# NEW: API Server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+python-multipart>=0.0.6

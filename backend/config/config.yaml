@@ -1,0 +1,53 @@
+# AI Copilot - GPU TURBO Configuration
+# Otimizado para RTX 4070 Super
+
+llm:
+  default_provider: "local"
+  local:
+    base_url: "http://localhost:11434"
+    model: "llama3.1:8b"
+
+audio:
+  sample_rate: 16000
+  vad_threshold: 0.012
+  min_speech_duration_ms: 600
+  max_speech_gap_ms: 1200
+
+asr:
+  model_size: large  # tiny, base, small, medium, large
+  language: pt
+  device: auto  # auto, cpu, cuda
+  word_timestamps: false  # DISABLED - causes crash with large model
+  temperature: 0.0
+  beam_size: 8
+  best_of: 5
+
+context:
+  window_size: 10
+
+system_audio:
+  buffer_duration_ms: 3000  # Not used in sentence mode
+  vad_threshold: 0.005  # Lower than mic for system audio
+  adaptive_gain: false  # Fixed gain
+  gain_min: 10.0  # Fixed 10x (doubled)
+  gain_max: 10.0  # Fixed 10x (doubled)
+  gain_initial: 10.0  # 10x gain for higher volume
+  target_rms: 0.10  # Not used
+  normalize: false  # DISABLED
+  noise_reduction: false  # DISABLED
+  highpass_freq: 80  # Hz - not used
+  # Sentence segmentation (Balanced for stability)
+  sentence_mode: true  # Enable sentence-based segmentation
+  min_silence_ms: 200  # 200ms silence (balanced - not too sensitive)
+  min_segment_ms: 800  # Minimum 0.8s (prevents crash from too many chunks)
+  max_segment_ms: 3000  # Maximum 3s (fast but stable)
+  silence_threshold: 0.003  # RMS below this = silence
+
+ui:
+  width: 450
+  height: 350
+  opacity: 0.95
+
+logging:
+  level: "INFO"
+  file: "logs/ai-copilot.log"
