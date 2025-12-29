@@ -129,16 +129,23 @@ function openScreenshotModal(imageUrl) {
         modal.id = 'screenshotModal';
         modal.className = 'screenshot-modal';
         modal.innerHTML = `
-            <div class="screenshot-modal-close" onclick="closeScreenshotModal(event)">×</div>
+            <div class="screenshot-modal-close">×</div>
             <img src="" alt="Screenshot Fullscreen"/>
         `;
         
+        // X button fecha
+        const closeBtn = modal.querySelector('.screenshot-modal-close');
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            modal.classList.remove('active');
+        });
+        
         // Click fora da imagem fecha
-        modal.onclick = (e) => {
+        modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.classList.remove('active');
             }
-        };
+        });
         
         document.body.appendChild(modal);
     }
