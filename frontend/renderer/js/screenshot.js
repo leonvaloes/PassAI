@@ -100,17 +100,6 @@ function addScreenshotToChat(filename) {
     const chatMessages = document.getElementById('chatMessages');
     if (!chatMessages) return;
     
-    // Criar elemento de mensagem
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message screenshot-message';
-    
-    // URL relativa ao backend
-    const imageUrl = `http://localhost:8000/screenshots/${filename}`;
-    
-    const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    
-    messageDiv.innerHTML = `
-        <div class="screenshot-container">
     const messageDiv = document.createElement('div');
     messageDiv.className = 'chat-message screenshot-message';
     
@@ -119,9 +108,9 @@ function addScreenshotToChat(filename) {
     
     messageDiv.innerHTML = `
         <div class="screenshot-container">
-            <img src="${imageUrl}" alt="Screenshot" class="screenshot-preview" loading="lazy"/>
+            <img src="${imageUrl}" alt="Screenshot" class="screenshot-preview" loading="lazy" onclick="openScreenshotModal('${imageUrl}')"/>
             <div class="screenshot-info">
-                <span>?? Screenshot capturado</span>
+                <span>📸 Screenshot capturado</span>
                 <small>${timestamp}</small>
             </div>
         </div>
@@ -129,4 +118,22 @@ function addScreenshotToChat(filename) {
     
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Modal para fullscreen
+function openScreenshotModal(imageUrl) {
+    let modal = document.getElementById('screenshotModal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'screenshotModal';
+        modal.className = 'screenshot-modal';
+        modal.innerHTML = `<img src="" alt="Screenshot Fullscreen"/>`;
+        modal.onclick = () => modal.classList.remove('active');
+        document.body.appendChild(modal);
+    }
+    
+    const img = modal.querySelector('img');
+    img.src = imageUrl;
+    modal.classList.add('active');
 }
