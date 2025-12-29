@@ -319,7 +319,9 @@ Use esta descrição para responder à pergunta do usuário como se você pudess
                     match = re.search(r"\[LOOK:\s*(.*?)\]", ai_response)
                     if match:
                         query = match.group(1).strip()
-                        logger.info(f"🤖 Main LLM requested to LOOK: {query}")
+                        print("\n" + "="*60)
+                        logger.info(f"🕵️‍♂️ ACTIVE VISION TRIGGERED")
+                        logger.info(f"❓ Question: {query}")
                         self._send_ws({"type": "status", "data": {"status": f"👁️ Verificando: {query}..."}})
                         
                         # Query Vision AI
@@ -327,7 +329,8 @@ Use esta descrição para responder à pergunta do usuário como se você pudess
                         
                         if vision_query_res["success"]:
                             vision_answer = vision_query_res["answer"]
-                            logger.info(f"👁️ Vision AI Answered: {vision_answer}")
+                            logger.info(f"💡 Answer:   {vision_answer}")
+                            print("="*60 + "\n")
                             
                             # Feed back to Main LLM
                             nav_update = f"""[TOOL RESULT]
