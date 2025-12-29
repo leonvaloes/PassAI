@@ -170,4 +170,4 @@ function openScreenshotModal(imageUrl) {
 
 // Global scope for onclick access if needed (though we use addEventListener now)
 window.openScreenshotModal = openScreenshotModal;
-```
+
