@@ -108,7 +108,7 @@ function addScreenshotToChat(filename) {
     
     messageDiv.innerHTML = `
         <div class="screenshot-container">
-            <img src="${imageUrl}" alt="Screenshot" class="screenshot-preview" loading="lazy" onclick="openScreenshotModal('${imageUrl}')"/>
+            <img src="${imageUrl}" alt="Screenshot" class="screenshot-preview" loading="lazy" onclick="window.openScreenshotModal('${imageUrl}')"/>
             <div class="screenshot-info">
                 <span>📸 Screenshot capturado</span>
                 <small>${timestamp}</small>
@@ -120,54 +120,38 @@ function addScreenshotToChat(filename) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Modal para fullscreen
-let screenshotModal = null;
-
-function openScreenshotModal(imageUrl) {
-    if (!screenshotModal) {
-        screenshotModal = document.createElement('div');
-        screenshotModal.id = 'screenshotModal';
-        screenshotModal.className = 'screenshot-modal';
-        screenshotModal.innerHTML = `
-            <div class="screenshot-modal-close">×</div>
-            <img src="" alt="Screenshot Fullscreen"/>
-        `;
-        document.body.appendChild(screenshotModal);
-        
-        // X button - IMPORTANTE: stopPropagation para não propagar para o modal
-        const closeBtn = screenshotModal.querySelector('.screenshot-modal-close');
-        closeBtn.onclick = (e) => {
-            e.stopPropagation();
-            screenshotModal.classList.remove('active');
-        };
-        
-        // Impedir que clique na imagem feche
-        const img = screenshotModal.querySelector('img');
-        img.onclick = (e) => {
-            e.stopPropagation();
-        };
-        
-        // Click no fundo fecha
-        screenshotModal.onclick = () => {
-            screenshotModal.classList.remove('active');
-        };
-        
-        // ESC key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && screenshotModal.classList.contains('active')) {
-                screenshotModal.classList.remove('active');
-            }
-        });
-    }
-    
-    screenshotModal.querySelector('img').src = imageUrl;
-    screenshotModal.classList.add('active');
-}
-
-function closeScreenshotModal(event) {
-    event.stopPropagation();
+// FUNÇÃO GLOBAL para fechar modal
+window.closeModal = function() {
     const modal = document.getElementById('screenshotModal');
     if (modal) {
         modal.classList.remove('active');
     }
-}
+};
+
+// Modal para fullscreen - VERSÃO SIMPLIFICADA
+window.openScreenshotModal = function(imageUrl) {
+    let modal = document.getElementById('screenshotModal');
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'screenshotModal';
+        modal.className = 'screenshot-modal';
+        modal.innerHTML = `
+            <div class="screenshot-modal-close" onclick="window.closeModal()">×</div>
+            <img src="${imageUrl}" alt="Screenshot Fullscreen" onclick="event.stopPropagation()"/>
+        `;
+        modal.onclick = window.closeModal;
+        document.body.appendChild(modal);
+        
+        // ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.closeModal();
+            }
+        });
+    } else {
+        modal.querySelector('img').src = imageUrl;
+    }
+    
+    modal.classList.add('active');
+};
