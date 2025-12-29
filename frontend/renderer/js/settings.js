@@ -156,9 +156,18 @@ function saveSettings() {
   
   localStorage.setItem('appSettings', JSON.stringify(settings));
   
+  console.log('Settings saved:', settings);
+  
+  // Show success message
   alert('✅ Configurações salvas!');
   
-  console.log('Settings saved:', settings);
+  // Auto-close settings window after 500ms
+  setTimeout(() => {
+    const settingsModal = document.getElementById('settingsModal');
+    if (settingsModal) {
+      settingsModal.style.display = 'none';
+    }
+  }, 500);
 }
 
 function loadSettings() {
