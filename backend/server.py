@@ -37,6 +37,8 @@ app.add_middleware(
 )
 
 
+from core.ai.vision_processor import VisionProcessor
+
 class SimpleBackend:
     """Simple backend with mic capture and AI chat"""
     def __init__(self):
@@ -58,6 +60,10 @@ class SimpleBackend:
         
         # LLM
         self.llm_router = LLMRouter(config=LLMConfig(default_provider=LLMProvider.OLLAMA))
+        
+        # Vision AI
+        self.vision_processor = VisionProcessor()
+        self.last_screenshot_path: Optional[str] = None
         
         # Audio capture mode
         self.capture_active = False
@@ -249,19 +255,56 @@ Análise:
             self._send_ws({"type": "status", "data": {"status": "❌ Failed"}})
     
     def handle_ai_chat(self, question: str):
-        """Handle AI chat"""
+        """Handle AI chat with Optional Vision Support"""
         try:
-            self._send_ws({" type": "status", "data": {"status": "🤖 Thinking..."}})
+            self._send_ws({"type": "status", "data": {"status": "🤖 Thinking..."}})
             
             self.ai_chat_history.append({"speaker": "user", "text": question})
             
-            response = self.llm_router.generate_suggestion(
-                conversation_history=self.ai_chat_history[-10:],
-                current_intent="chat",
-                user_goal="Answer"
-            )
+            # Check if we have a recent screenshot to analyze
+            use_vision = False
+            image_path = self.last_screenshot_path
             
-            ai_response = response['suggestion']
+            if image_path and os.path.exists(image_path):
+                # Simple heuristic: if user asks about "imagem", "tela", "isso", "print", try vision
+                # OR if the screenshot was just taken (we could check timestamp but let's be simpler for now)
+                # Let's assume ANY question after a screenshot refers to it until cleared
+                
+                # Check for explicit keywords or if it's the very next message
+                keywords = ["imagem", "image", "tela", "screen", "isso", "print", "foto", "erro", "mostra", "vejo"]
+                if any(k in question.lower() for k in keywords) or True: # Force True for testing flow
+                    use_vision = True
+            
+            if use_vision and image_path:
+                logger.info(f"Using Vision AI for image: {os.path.basename(image_path)}")
+                self._send_ws({"type": "status", "data": {"status": "👁️ Analisando Imagem..."}})
+                
+                vision_result = self.vision_processor.analyze_image(image_path, question)
+                
+                if vision_result["success"]:
+                    ai_response = vision_result["response"]
+                    # Reset screenshot path after successful use to avoid context pollution? 
+                    # Maybe keep it to allow follow-up questions? Let's keep it for now.
+                else:
+                    logger.error(f"Vision failed: {vision_result.get('error')}")
+                    ai_response = f"⚠️ Erro na análise visual: {vision_result.get('error')}\n\nRespondendo apenas com texto..."
+                    
+                    # Fallback to text LLM if vision fails
+                    response = self.llm_router.generate_suggestion(
+                        conversation_history=self.ai_chat_history[-10:],
+                        current_intent="chat",
+                        user_goal="Answer"
+                    )
+                    ai_response += "\n\n" + response['suggestion']
+            else:
+                # Text-only LLM
+                response = self.llm_router.generate_suggestion(
+                    conversation_history=self.ai_chat_history[-10:],
+                    current_intent="chat",
+                    user_goal="Answer"
+                )
+                ai_response = response['suggestion']
+            
             self.ai_chat_history.append({"speaker": "assistant", "text": ai_response})
             
             self._send_ws({
@@ -532,6 +575,10 @@ async def capture_screenshot(request: ScreenshotRequest):
         # Future: Add vision analysis here if request.analyze is True
         
         logger.info(f"📸 Screenshot captured: {filepath}")
+        
+        # Store context for Vision AI
+        backend.last_screenshot_path = filepath
+        
         return result
         
     except Exception as e:
