@@ -265,14 +265,26 @@ Análise:
             vision_context = ""
             
             if image_path and os.path.exists(image_path):
-                logger.info(f"Using Vision AI (Context Active) for image: {os.path.basename(image_path)}")
-                self._send_ws({"type": "status", "data": {"status": "👁️ Analisando Contexto Visual..."}})
-                
-                # Get pure description from Vision Model
-                vision_result = self.vision_processor.get_detailed_description(image_path)
+                # Check cache first
+                if hasattr(self, 'current_image_description') and self.current_image_description and self.current_image_path == image_path:
+                    logger.info(f"Using CACHED Vision Description for: {os.path.basename(image_path)}")
+                    description = self.current_image_description
+                    vision_result = {"success": True} # Simulated success
+                else:
+                    logger.info(f"Generating NEW Vision Description for: {os.path.basename(image_path)}")
+                    self._send_ws({"type": "status", "data": {"status": "👁️ Analisando Contexto Visual..."}})
+                    
+                    # Get pure description from Vision Model
+                    vision_result = self.vision_processor.get_detailed_description(image_path)
+                    
+                    if vision_result["success"]:
+                        description = vision_result["description"]
+                        # Cache it
+                        self.current_image_description = description
+                        self.current_image_path = image_path
+                        logger.info("✅ Vision Description Cached")
                 
                 if vision_result["success"]:
-                    description = vision_result["description"]
                     vision_context = f"""
 [CONTEXTO VISUAL - DESCRIÇÃO DA IMAGEM ATUAL]
 A seguinte descrição foi gerada por um modelo de visão AI sobre a imagem que o usuário enviou:
@@ -497,6 +509,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     backend.conversation.clear()
                     backend.ai_chat_history = []  # Also clear AI chat history
                     backend.last_screenshot_path = None  # Clear Vision Context
+                    backend.current_image_description = None # Clear Cache
+                    backend.current_image_path = None
                     logger.info("🧹 Conversation and Context cleared")
                     await websocket.send_json({"type": "conversation_cleared"})
                     await websocket.send_json({"type": "status", "data": {"status": "🧹 Cleared"}})
