@@ -111,23 +111,6 @@ function addScreenshotToChat(filename) {
     
     messageDiv.innerHTML = `
         <div class="screenshot-container">
-            <img src="${imageUrl}" alt="Screenshot" class="screenshot-preview" loading="lazy"/>
-            <div class="screenshot-info">
-                <span>?? Screenshot capturado</span>
-                <small>${timestamp}</small>
-            </div>
-        </div>
-    `;
-    
-    chatMessages.appendChild(messageDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-
-function addScreenshotToChat(filename) {
-    const chatMessages = document.getElementById('chatMessages');
-    if (!chatMessages) return;
-    
     const messageDiv = document.createElement('div');
     messageDiv.className = 'chat-message screenshot-message';
     

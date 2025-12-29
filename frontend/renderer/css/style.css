@@ -87,6 +87,78 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Screenshot Messages */
+.screenshot-message {
+    max-width: 250px;
+    margin: 10px 0;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.screenshot-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.screenshot-preview {
+    max-width: 200px;
+    max-height: 150px;
+    object-fit: cover;
+    border-radius: 4px;
+    cursor: zoom-in;
+    transition: transform 0.2s, opacity 0.2s;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.screenshot-preview:hover {
+    transform: scale(1.05);
+    opacity: 0.9;
+}
+
+.screenshot-info {
+    display: flex;
+    flex-direction: column;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.screenshot-info span {
+    font-weight: 500;
+}
+
+.screenshot-info small {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Modal/Lightbox para screenshot fullscreen */
+.screenshot-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+}
+
+.screenshot-modal.active {
+    display: flex;
+}
+
+.screenshot-modal img {
+    max-width: 95%;
+    max-height: 95%;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+}
+
 /* Window Content */
 .window-content {
   flex: 1;
