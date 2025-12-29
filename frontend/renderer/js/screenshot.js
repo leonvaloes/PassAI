@@ -4,6 +4,12 @@ async function captureScreenshot() {
     try {
         console.log('📸 Capturing screenshot...');
         
+        // Get selected monitor from settings
+        const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+        const selectedMonitor = parseInt(settings.screenshotMonitor || '0');
+        
+        console.log(`Using monitor: ${selectedMonitor}`);
+        
         // Call backend API
         const response = await fetch('http://localhost:8000/api/screenshot', {
             method: 'POST',
@@ -11,7 +17,7 @@ async function captureScreenshot() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                monitor: 0,  // All monitors
+                monitor: selectedMonitor,
                 analyze: false  // No vision analysis for now
             })
         });

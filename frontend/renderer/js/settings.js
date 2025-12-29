@@ -151,7 +151,13 @@ function saveSettings() {
     enableSystemAudio: document.getElementById('enableSystemAudio')?.checked,
     autoStartCapture: document.getElementById('autoStartCapture')?.checked,
     llmProvider: document.getElementById('llmProviderSelect')?.value,
-    autoAnalyze: document.getElementById('autoAnalyze')?.checked
+    autoAnalyze: document.getElementById('autoAnalyze')?.checked,
+    screenshotMonitor: document.getElementById('screenshotMonitorSelect')?.value || '0',
+    // Hotkeys
+    hotkeyScreenshot: document.getElementById('hotkeyScreenshot')?.value || 'CommandOrControl+Shift+X',
+    hotkeyPause: document.getElementById('hotkeyPause')?.value || 'CommandOrControl+Shift+P',
+    hotkeyClear: document.getElementById('hotkeyClear')?.value || 'CommandOrControl+Shift+C',
+    hotkeySave: document.getElementById('hotkeySave')?.value || 'CommandOrControl+Shift+S'
   };
   
   localStorage.setItem('appSettings', JSON.stringify(settings));
@@ -198,6 +204,9 @@ function loadSettings() {
     }
     if (document.getElementById('autoAnalyze')) {
       document.getElementById('autoAnalyze').checked = settings.autoAnalyze || false;
+    }
+    if (document.getElementById('screenshotMonitorSelect')) {
+      document.getElementById('screenshotMonitorSelect').value = settings.screenshotMonitor || '0';
     }
     
     // Load devices and restore selections

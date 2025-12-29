@@ -62,6 +62,9 @@
         <button class="btn-analyze" onclick="analyzeTranscription()">
           📊 Analisar Transcrição
         </button>
+        <button class="btn-analyze" onclick="captureScreenshot()" style="margin-top: 8px;">
+          📸 Capturar Tela
+        </button>
       </div>
     </div>
 
@@ -166,12 +169,38 @@
         </div>
 
         <div class="settings-section">
-          <h4>Atalhos</h4>
+          <h4>📸 Screenshots</h4>
           <div class="setting-item">
-            <small>Ctrl+Shift+P - Pausar/Retomar</small><br>
-            <small>Ctrl+Shift+C - Limpar conversa</small><br>
-            <small>Ctrl+Shift+S - Salvar sessão</small>
+            <label>Monitor para Captura</label>
+            <select id="screenshotMonitorSelect">
+              <option value="0">Todos os Monitores</option>
+              <option value="1">Monitor 1 (Principal)</option>
+              <option value="2">Monitor 2</option>
+              <option value="3">Monitor 3</option>
+            </select>
           </div>
+        </div>
+
+        <div class="settings-section">
+          <h4>⌨️ Atalhos de Teclado</h4>
+          <div class="setting-item">
+            <label>Screenshot</label>
+            <input type="text" id="hotkeyScreenshot" placeholder="F12" readonly onclick="captureHotkey('hotkeyScreenshot')">
+            <small style="color: #999;">Clique e pressione a tecla desejada</small>
+          </div>
+          <div class="setting-item">
+            <label>Pausar/Retomar</label>
+            <input type="text" id="hotkeyPause" placeholder="Ctrl+Shift+P" readonly onclick="captureHotkey('hotkeyPause')">
+          </div>
+          <div class="setting-item">
+            <label>Limpar Conversa</label>
+            <input type="text" id="hotkeyClear" placeholder="Ctrl+Shift+C" readonly onclick="captureHotkey('hotkeyClear')">
+          </div>
+          <div class="setting-item">
+            <label>Salvar Sessão</label>
+            <input type="text" id="hotkeySave" placeholder="Ctrl+Shift+S" readonly onclick="captureHotkey('hotkeySave')">
+          </div>
+          <button class="btn-small-refresh" onclick="resetHotkeys()">🔄 Resetar Padrões</button>
         </div>
 
         <button class="btn-primary" onclick="saveSettings()">Salvar Configurações</button>
@@ -198,5 +227,6 @@
   <script src="js/websocket.js"></script>
   <script src="js/main-app.js"></script>
   <script src="js/screenshot.js"></script>
+  <script src="js/hotkey-customizer.js"></script>
 </body>
 </html>

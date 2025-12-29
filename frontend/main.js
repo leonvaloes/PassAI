@@ -47,23 +47,32 @@ function createWindow() {
 app.on('ready', () => {
   createWindow();
   
+  // Enable DevTools for debugging
+  mainWindow.webContents.openDevTools();
+  
   // Global hotkeys
-  globalShortcut.register('CommandOrControl+Shift+P', () => {
-    mainWindow.webContents.send('hotkey', 'pause');
-  });
+  const registered = {
+    pause: globalShortcut.register('CommandOrControl+Shift+P', () => {
+      mainWindow.webContents.send('hotkey', 'pause');
+    }),
+    clear: globalShortcut.register('CommandOrControl+Shift+C', () => {
+      mainWindow.webContents.send('hotkey', 'clear');
+    }),
+    save: globalShortcut.register('CommandOrControl+Shift+S', () => {
+      mainWindow.webContents.send('hotkey', 'save');
+    }),
+    // Changed from F12 to Ctrl+Shift+X (F12 often blocked by system)
+    screenshot: globalShortcut.register('CommandOrControl+Shift+X', () => {
+      console.log('Screenshot hotkey pressed!');
+      mainWindow.webContents.send('hotkey', 'screenshot');
+    })
+  };
   
-  globalShortcut.register('CommandOrControl+Shift+C', () => {
-    mainWindow.webContents.send('hotkey', 'clear');
-  });
-  
-  globalShortcut.register('CommandOrControl+Shift+S', () => {
-    mainWindow.webContents.send('hotkey', 'save');
-  });
-  
-  // Screenshot hotkey
-  globalShortcut.register('F12', () => {
-    mainWindow.webContents.send('hotkey', 'screenshot');
-  });
+  // Log registration status
+  console.log('Hotkeys registered:', registered);
+  if (!registered.screenshot) {
+    console.error('❌ Failed to register screenshot hotkey!');
+  }
 });
 
 app.on('window-all-closed', () => {
