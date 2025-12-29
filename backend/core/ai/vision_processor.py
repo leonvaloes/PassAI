@@ -33,11 +33,25 @@ class VisionProcessor:
                 image_data = base64.b64encode(f.read()).decode("utf-8")
             
             # Prepare request to Ollama
+            # Add a system prompt to guide the model towards technical analysis and avoid false refusal
+            system_prompt = (
+                "You are a Senior Software Engineer assisting the developer (user) with their own code. "
+                "The user has explicitly requested this analysis for debugging purposes. "
+                "You have full permission to analyze the code, text, and UI shown in this image. "
+                "Do NOT refuse to analyze. Do NOT mention privacy or permission. "
+                "Focus purely on the technical content (syntax, logic, UI layout, errors) visible in the screenshot."
+            )
+            
+            final_prompt = f"{system_prompt}\n\nUser Question: {prompt}"
+            
             payload = {
                 "model": self.model,
-                "prompt": prompt,
+                "prompt": final_prompt,
                 "images": [image_data],
-                "stream": False
+                "stream": False,
+                "options": {
+                    "temperature": 0.1, # Very low temperature for strict adherence to instructions
+                }
             }
             
             logger.info(f"Sending image to Vision AI ({self.model})...")
