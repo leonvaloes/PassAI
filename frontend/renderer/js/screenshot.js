@@ -120,38 +120,54 @@ function addScreenshotToChat(filename) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// FUNÇÃO GLOBAL para fechar modal
-window.closeModal = function() {
+// Initialize modal events when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('screenshotModal');
-    if (modal) {
-        modal.classList.remove('active');
-    }
-};
-
-// Modal para fullscreen - VERSÃO SIMPLIFICADA
-window.openScreenshotModal = function(imageUrl) {
-    let modal = document.getElementById('screenshotModal');
+    const closeBtn = document.getElementById('screenshotModalClose');
+    const modalImg = document.getElementById('screenshotModalImage');
     
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'screenshotModal';
-        modal.className = 'screenshot-modal';
-        modal.innerHTML = `
-            <div class="screenshot-modal-close" onclick="window.closeModal()">×</div>
-            <img src="${imageUrl}" alt="Screenshot Fullscreen" onclick="event.stopPropagation()"/>
-        `;
-        modal.onclick = window.closeModal;
-        document.body.appendChild(modal);
+    if (modal && closeBtn) {
+        // Close on X click
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            modal.classList.remove('active');
+        });
         
-        // ESC key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                window.closeModal();
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
             }
         });
-    } else {
-        modal.querySelector('img').src = imageUrl;
+        
+        // Prevent image click from closing
+        if (modalImg) {
+            modalImg.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
     }
     
-    modal.classList.add('active');
-};
+    // Close on ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && modal.classList.contains('active')) {
+            modal.classList.remove('active');
+        }
+    });
+});
+
+function openScreenshotModal(imageUrl) {
+    const modal = document.getElementById('screenshotModal');
+    const img = document.getElementById('screenshotModalImage');
+    
+    if (modal && img) {
+        img.src = imageUrl;
+        modal.classList.add('active');
+    } else {
+        console.error('Modal elements not found!');
+    }
+}
+
+// Global scope for onclick access if needed (though we use addEventListener now)
+window.openScreenshotModal = openScreenshotModal;
+```
