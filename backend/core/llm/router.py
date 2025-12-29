@@ -364,24 +364,29 @@ Generate a brief, persuasive suggestion (1-2 sentences) for what the user should
         
         # User message final pedindo sugestão
         if user_goal == "Answer":
-            user_msg = "" # Context already in history/system/previous messages
-            # Just add the intent context if needed, or let previous messages stand
+            user_msg = ""
             if screen_context:
                 user_msg += f"Screen context:\n{screen_context}\n\n"
             
-            user_msg += f"(Context: Intent={current_intent})"
-            # In chat mode, the last message in history is the user's actual question.
-            # We add a small system note to ensure it answers whatever was last.
+            if current_intent and current_intent != "chat":
+                 user_msg += f"(Context: Intent={current_intent})"
+            
+            # Only append if we actually have something to add
+            if user_msg:
+                messages.append({
+                    "role": "system",
+                    "content": user_msg
+                })
         else:
             user_msg = f"Current intent: {current_intent}."
             if screen_context:
                 user_msg += f"\n\nScreen context: {screen_context}"
             user_msg += "\n\nGenerate a brief persuasive suggestion (1-2 sentences) for what I should say next."
-        
-        messages.append({
-            "role": "system" if user_goal == "Answer" else "user", 
-            "content": user_msg
-        })
+            
+            messages.append({
+                "role": "user",
+                "content": user_msg
+            })
         
         return messages
     
