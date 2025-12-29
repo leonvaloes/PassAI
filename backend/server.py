@@ -311,6 +311,42 @@ Use esta descrição para responder à pergunta do usuário como se você pudess
             )
             
             ai_response = response['suggestion']
+            
+            # CHECK FOR ACTIVE VISION REQUEST [LOOK: ...]
+            if "[LOOK:" in ai_response and image_path:
+                try:
+                    import re
+                    match = re.search(r"\[LOOK:\s*(.*?)\]", ai_response)
+                    if match:
+                        query = match.group(1).strip()
+                        logger.info(f"🤖 Main LLM requested to LOOK: {query}")
+                        self._send_ws({"type": "status", "data": {"status": f"👁️ Verificando: {query}..."}})
+                        
+                        # Query Vision AI
+                        vision_query_res = self.vision_processor.query_image(image_path, query)
+                        
+                        if vision_query_res["success"]:
+                            vision_answer = vision_query_res["answer"]
+                            logger.info(f"👁️ Vision AI Answered: {vision_answer}")
+                            
+                            # Feed back to Main LLM
+                            nav_update = f"""[TOOL RESULT]
+Vision Query: "{query}"
+Vision Answer: "{vision_answer}"
+Now answer the user's original question based on this new information."""
+                            
+                            self.ai_chat_history.append({"speaker": "system", "text": nav_update})
+                            
+                            # Re-prompt Main LLM
+                            response_final = self.llm_router.generate_suggestion(
+                                conversation_history=self.ai_chat_history[-10:],
+                                current_intent="chat",
+                                user_goal="Answer"
+                            )
+                            ai_response = response_final['suggestion']
+                except Exception as ex:
+                    logger.error(f"Re-Act Loop Error: {ex}")
+            
             self.ai_chat_history.append({"speaker": "assistant", "text": ai_response})
             
             self._send_ws({

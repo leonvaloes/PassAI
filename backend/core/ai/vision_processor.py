@@ -82,7 +82,61 @@ class VisionProcessor:
         except Exception as e:
             logger.error(f"Vision description error: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
-
+    def query_image(self, image_path: str, prompt: str) -> Dict[str, Any]:
+        """
+        Ask a specific question about an image (Active Vision).
+        
+        Args:
+            image_path: Path to the image file
+            prompt: Question to ask about the image
+            
+        Returns:
+            Dict containing 'success', 'answer', and metadata
+        """
+        try:
+            if not os.path.exists(image_path):
+                return {"success": False, "error": f"Image file not found: {image_path}"}
+            
+            # Read and encode image
+            with open(image_path, "rb") as f:
+                image_data = base64.b64encode(f.read()).decode("utf-8")
+            
+            # System prompt to ensure factual answers
+            system_prompt = "You are a Technical Assistant. Answer the question about the image directly and concisely."
+            
+            final_prompt = f"{system_prompt}\n\nQuestion: {prompt}\nAnswer:"
+            
+            payload = {
+                "model": self.model,
+                "prompt": final_prompt,
+                "images": [image_data],
+                "stream": False,
+                "options": {
+                    "temperature": 0.0, # Zero temp for factuality
+                }
+            }
+            
+            logger.info(f"Querying Vision AI ({self.model}): {prompt}")
+            
+            response = requests.post(f"{self.ollama_url}/api/generate", json=payload, timeout=60)
+            
+            if response.status_code == 200:
+                result = response.json()
+                answer = result.get("response", "").strip()
+                return {
+                    "success": True,
+                    "answer": answer,
+                    "model": self.model
+                }
+            else:
+                return {
+                    "success": False, 
+                    "error": f"Ollama API error: {response.status_code} - {response.text}"
+                }
+                
+        except Exception as e:
+            logger.error(f"Vision query error: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
     def is_available(self) -> bool:
         """Check if Ollama is running and model is available"""
         try:
