@@ -121,38 +121,41 @@ function addScreenshotToChat(filename) {
 }
 
 // Modal para fullscreen
+let screenshotModal = null;
+
 function openScreenshotModal(imageUrl) {
-    let modal = document.getElementById('screenshotModal');
-    
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'screenshotModal';
-        modal.className = 'screenshot-modal';
-        modal.innerHTML = `
+    if (!screenshotModal) {
+        screenshotModal = document.createElement('div');
+        screenshotModal.id = 'screenshotModal';
+        screenshotModal.className = 'screenshot-modal';
+        screenshotModal.innerHTML = `
             <div class="screenshot-modal-close">×</div>
             <img src="" alt="Screenshot Fullscreen"/>
         `;
+        document.body.appendChild(screenshotModal);
         
-        // X button fecha
-        const closeBtn = modal.querySelector('.screenshot-modal-close');
-        closeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            modal.classList.remove('active');
-        });
+        // X button
+        screenshotModal.querySelector('.screenshot-modal-close').onclick = () => {
+            screenshotModal.classList.remove('active');
+        };
         
-        // Click fora da imagem fecha
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.remove('active');
+        // Click no fundo
+        screenshotModal.onclick = (e) => {
+            if (e.target === screenshotModal) {
+                screenshotModal.classList.remove('active');
+            }
+        };
+        
+        // ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && screenshotModal.classList.contains('active')) {
+                screenshotModal.classList.remove('active');
             }
         });
-        
-        document.body.appendChild(modal);
     }
     
-    const img = modal.querySelector('img');
-    img.src = imageUrl;
-    modal.classList.add('active');
+    screenshotModal.querySelector('img').src = imageUrl;
+    screenshotModal.classList.add('active');
 }
 
 function closeScreenshotModal(event) {
