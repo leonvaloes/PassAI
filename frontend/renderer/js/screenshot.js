@@ -134,16 +134,22 @@ function openScreenshotModal(imageUrl) {
         `;
         document.body.appendChild(screenshotModal);
         
-        // X button
-        screenshotModal.querySelector('.screenshot-modal-close').onclick = () => {
+        // X button - IMPORTANTE: stopPropagation para não propagar para o modal
+        const closeBtn = screenshotModal.querySelector('.screenshot-modal-close');
+        closeBtn.onclick = (e) => {
+            e.stopPropagation();
             screenshotModal.classList.remove('active');
         };
         
-        // Click no fundo
-        screenshotModal.onclick = (e) => {
-            if (e.target === screenshotModal) {
-                screenshotModal.classList.remove('active');
-            }
+        // Impedir que clique na imagem feche
+        const img = screenshotModal.querySelector('img');
+        img.onclick = (e) => {
+            e.stopPropagation();
+        };
+        
+        // Click no fundo fecha
+        screenshotModal.onclick = () => {
+            screenshotModal.classList.remove('active');
         };
         
         // ESC key
