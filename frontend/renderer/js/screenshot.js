@@ -1,14 +1,19 @@
-// Screenshot Handler
-
+// Screenshot functionality
 async function captureScreenshot() {
     try {
-        console.log('📸 Capturing screenshot...');
+        console.log('Capturing screenshot...');
         
-        // Get selected monitor from settings
+        // Hide window before capture
+        if (window.electronAPI?.setOpacity) {
+            window.electronAPI.setOpacity(0);
+        }
+        
+        // Wait for window to become invisible
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Get monitor setting
         const settings = JSON.parse(localStorage.getItem('appSettings') || '{}');
-        const selectedMonitor = parseInt(settings.screenshotMonitor || '0');
-        
-        console.log(`Using monitor: ${selectedMonitor}`);
+        const monitor = parseInt(settings.screenshotMonitor || '0');
         
         // Call backend API
         const response = await fetch('http://localhost:8000/api/screenshot', {
@@ -16,33 +21,43 @@ async function captureScreenshot() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                monitor: selectedMonitor,
-                analyze: false  // No vision analysis for now
-            })
+            body: JSON.stringify({ monitor })
         });
         
         const data = await response.json();
         
+        // Show window again
+        if (window.electronAPI?.setOpacity) {
+            window.electronAPI.setOpacity(1);
+        }
+        
         if (data.success) {
             // Show success notification
             showNotification('Screenshot Capturado', {
-                body: `Salvo: ${data.filename}\nTamanho: ${data.size.width}x${data.size.height}`,
+                body: `Salvo: ${data.filename}`,
                 icon: 'success'
             });
             
-            console.log('✅ Screenshot saved:', data.filepath);
+            // Add to chat
+            addScreenshotToChat(data.filename);
+            
+            console.log('Screenshot saved:', data.filepath);
         } else {
             showNotification('Erro ao Capturar Screenshot', {
                 body: data.error || 'Erro desconhecido',
                 icon: 'error'
             });
             
-            console.error('❌ Screenshot failed:', data.error);
+            console.error('Screenshot failed:', data.error);
         }
         
     } catch (error) {
-        console.error('❌ Screenshot capture error:', error);
+        // Make sure window is visible even on error
+        if (window.electronAPI?.setOpacity) {
+            window.electronAPI.setOpacity(1);
+        }
+        
+        console.error('Screenshot error:', error);
         showNotification('Erro ao Capturar Screenshot', {
             body: 'Falha na comunicação com o backend',
             icon: 'error'
@@ -79,3 +94,31 @@ if (window.electronAPI && window.electronAPI.onHotkey) {
 }
 
 console.log('📸 Screenshot handler loaded');
+
+
+function addScreenshotToChat(filename) {
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages) return;
+    
+    // Criar elemento de mensagem
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message screenshot-message';
+    
+    // URL relativa ao backend
+    const imageUrl = `http://localhost:8000/screenshots/${filename}`;
+    
+    const timestamp = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
+    messageDiv.innerHTML = `
+        <div class="screenshot-container">
+            <img src="${imageUrl}" alt="Screenshot" class="screenshot-preview" loading="lazy"/>
+            <div class="screenshot-info">
+                <span>?? Screenshot capturado</span>
+                <small>${timestamp}</small>
+            </div>
+        </div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}

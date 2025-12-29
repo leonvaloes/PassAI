@@ -8,6 +8,7 @@ import logging
 from typing import Optional
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 import threading
 import os
@@ -579,6 +580,11 @@ async def get_monitors():
         }
 
 
+
+# Serve screenshot files
+app.mount("/screenshots", StaticFiles(directory="backend/screenshots"), name="screenshots")
+
 if __name__ == "__main__":
     setup_logging({'logging': {'level': 'INFO'}})
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+
