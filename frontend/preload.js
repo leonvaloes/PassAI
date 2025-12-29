@@ -6,5 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   setIgnoreMouseEvents: (ignore, options) => {
     ipcRenderer.send('set-ignore-mouse-events', ignore, options);
+  },
+  onHotkey: (callback) => {
+    ipcRenderer.on('hotkey', (event, action) => callback(action));
   }
 });

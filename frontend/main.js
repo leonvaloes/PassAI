@@ -59,6 +59,11 @@ app.on('ready', () => {
   globalShortcut.register('CommandOrControl+Shift+S', () => {
     mainWindow.webContents.send('hotkey', 'save');
   });
+  
+  // Screenshot hotkey
+  globalShortcut.register('F12', () => {
+    mainWindow.webContents.send('hotkey', 'screenshot');
+  });
 });
 
 app.on('window-all-closed', () => {

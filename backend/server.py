@@ -10,6 +10,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import threading
+import os
+from datetime import datetime
 
 import sys
 from pathlib import Path
@@ -489,6 +491,91 @@ async def health():
         "gpu": backend.asr.config.device == "cuda",
         "messages": len(backend.conversation.messages)
     }
+
+
+# Screenshot API Endpoints
+from core.capture.screenshot_capture import ScreenshotCapture
+from pydantic import BaseModel
+
+# Initialize screenshot capture
+screenshot_capture = ScreenshotCapture()
+
+
+class ScreenshotRequest(BaseModel):
+    monitor: int = 0  # 0 = all monitors, 1+ = specific monitor
+    analyze: bool = False  # Future: vision analysis
+
+
+@app.post("/api/screenshot")
+async def capture_screenshot(request: ScreenshotRequest):
+    """Capture screenshot"""
+    try:
+        filepath, img = screenshot_capture.capture_screen(request.monitor)
+        
+        if filepath is None:
+            return {
+                "success": False,
+                "error": "Failed to capture screenshot"
+            }
+        
+        result = {
+            "success": True,
+            "filepath": filepath,
+            "filename": os.path.basename(filepath),
+            "timestamp": datetime.now().isoformat(),
+            "size": {
+                "width": img.size[0],
+                "height": img.size[1]
+            }
+        }
+        
+        # Future: Add vision analysis here if request.analyze is True
+        
+        logger.info(f"📸 Screenshot captured: {filepath}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Screenshot capture error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@app.get("/api/screenshots")
+async def list_screenshots(limit: int = 20):
+    """List recent screenshots"""
+    try:
+        screenshots = screenshot_capture.list_screenshots(limit)
+        return {
+            "success": True,
+            "screenshots": screenshots,
+            "count": len(screenshots)
+        }
+    except Exception as e:
+        logger.error(f"List screenshots error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@app.get("/api/monitors")
+async def get_monitors():
+    """Get available monitors"""
+    try:
+        monitors = screenshot_capture.get_monitors()
+        return {
+            "success": True,
+            "monitors": monitors,
+            "count": len(monitors)
+        }
+    except Exception as e:
+        logger.error(f"Get monitors error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 
 if __name__ == "__main__":
