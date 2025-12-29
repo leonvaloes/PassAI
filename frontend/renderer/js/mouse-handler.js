@@ -8,10 +8,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function isInteractiveElement(element) {
     if (!element) return false;
     
-    // Check if it's a floating window, toolbar, or input
+    // Check if it's a floating window, toolbar, input, or modal
     const interactiveSelectors = [
       '.floating-window',
       '.toolbar',
+      '.screenshot-modal', // Modal must capture events
+      '.screenshot-modal-close',
+      '.screenshot-preview',
       'input',
       'button',
       'textarea'
