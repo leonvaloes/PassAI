@@ -120,7 +120,8 @@ class SimpleBackend:
             self.system_capture = SystemAudioCapture(
                 callback=self._on_audio_with_speaker,
                 sample_rate=16000,
-                device_index=device_idx  # Pass specific device or None for default
+                device_index=device_idx,  # Pass specific device or None for default
+                config=self.config
             )
             self.system_capture.start()
             
@@ -259,52 +260,45 @@ Análise:
         try:
             self._send_ws({"type": "status", "data": {"status": "🤖 Thinking..."}})
             
-            self.ai_chat_history.append({"speaker": "user", "text": question})
-            
-            # Check if we have a recent screenshot to analyze
-            use_vision = False
+            # Use Vision AI if we have an active screenshot
             image_path = self.last_screenshot_path
+            vision_context = ""
             
             if image_path and os.path.exists(image_path):
-                # Simple heuristic: if user asks about "imagem", "tela", "isso", "print", try vision
-                # OR if the screenshot was just taken (we could check timestamp but let's be simpler for now)
-                # Let's assume ANY question after a screenshot refers to it until cleared
+                logger.info(f"Using Vision AI (Context Active) for image: {os.path.basename(image_path)}")
+                self._send_ws({"type": "status", "data": {"status": "👁️ Analisando Contexto Visual..."}})
                 
-                # Check for explicit keywords or if it's the very next message
-                keywords = ["imagem", "image", "tela", "screen", "isso", "print", "foto", "erro", "mostra", "vejo"]
-                if any(k in question.lower() for k in keywords) or True: # Force True for testing flow
-                    use_vision = True
-            
-            if use_vision and image_path:
-                logger.info(f"Using Vision AI for image: {os.path.basename(image_path)}")
-                self._send_ws({"type": "status", "data": {"status": "👁️ Analisando Imagem..."}})
-                
-                vision_result = self.vision_processor.analyze_image(image_path, question)
+                # Get pure description from Vision Model
+                vision_result = self.vision_processor.get_detailed_description(image_path)
                 
                 if vision_result["success"]:
-                    ai_response = vision_result["response"]
-                    # Reset screenshot path after successful use to avoid context pollution? 
-                    # Maybe keep it to allow follow-up questions? Let's keep it for now.
+                    description = vision_result["description"]
+                    vision_context = f"""
+[CONTEXTO VISUAL - DESCRIÇÃO DA IMAGEM ATUAL]
+A seguinte descrição foi gerada por um modelo de visão AI sobre a imagem que o usuário enviou:
+---
+{description}
+---
+[FIM DO CONTEXTO VISUAL]
+Use esta descrição para responder à pergunta do usuário como se você pudesse ver a imagem.
+"""
                 else:
                     logger.error(f"Vision failed: {vision_result.get('error')}")
-                    ai_response = f"⚠️ Erro na análise visual: {vision_result.get('error')}\n\nRespondendo apenas com texto..."
-                    
-                    # Fallback to text LLM if vision fails
-                    response = self.llm_router.generate_suggestion(
-                        conversation_history=self.ai_chat_history[-10:],
-                        current_intent="chat",
-                        user_goal="Answer"
-                    )
-                    ai_response += "\n\n" + response['suggestion']
-            else:
-                # Text-only LLM
-                response = self.llm_router.generate_suggestion(
-                    conversation_history=self.ai_chat_history[-10:],
-                    current_intent="chat",
-                    user_goal="Answer"
-                )
-                ai_response = response['suggestion']
+                    vision_context = f"[ERRO NA ANÁLISE VISUAL: {vision_result.get('error')}]"
+
+            # Prepare user message with context
+            full_user_message = f"{vision_context}\n\n{question}" if vision_context else question
             
+            self.ai_chat_history.append({"speaker": "user", "text": full_user_message})
+            
+            # Send to Main LLM (Text-only Router)
+            response = self.llm_router.generate_suggestion(
+                conversation_history=self.ai_chat_history[-10:], # Keep last 10 turns
+                current_intent="chat",
+                user_goal="Answer"
+            )
+            
+            ai_response = response['suggestion']
             self.ai_chat_history.append({"speaker": "assistant", "text": ai_response})
             
             self._send_ws({
@@ -501,6 +495,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     
                 elif action == "clear":
                     backend.conversation.clear()
+                    backend.ai_chat_history = []  # Also clear AI chat history
+                    backend.last_screenshot_path = None  # Clear Vision Context
+                    logger.info("🧹 Conversation and Context cleared")
                     await websocket.send_json({"type": "conversation_cleared"})
                     await websocket.send_json({"type": "status", "data": {"status": "🧹 Cleared"}})
                     

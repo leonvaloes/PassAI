@@ -38,9 +38,9 @@ system_audio:
   highpass_freq: 80  # Hz - not used
   # Sentence segmentation (Balanced for stability)
   sentence_mode: true  # Enable sentence-based segmentation
-  min_silence_ms: 200  # 200ms silence (balanced - not too sensitive)
-  min_segment_ms: 800  # Minimum 0.8s (prevents crash from too many chunks)
-  max_segment_ms: 3000  # Maximum 3s (fast but stable)
+  min_silence_ms: 500  # 500ms silence (optimized for full sentences)
+  min_segment_ms: 1000  # Minimum 1s (prevent fragments)
+  max_segment_ms: 10000  # Maximum 10s (allow longer sentences)
   silence_threshold: 0.003  # RMS below this = silence
 
 ui:

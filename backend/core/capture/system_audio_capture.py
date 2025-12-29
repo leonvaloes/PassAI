@@ -13,45 +13,54 @@ logger = logging.getLogger(__name__)
 class SystemAudioCapture:
     """Captures system audio (loopback) only"""
     
-    def __init__(self, callback: Callable, sample_rate: int = 16000, device_index: int = None):
+    def __init__(self, callback: Callable, sample_rate: int = 16000, device_index: int = None, config: dict = None):
         self.callback = callback
         self.target_rate = sample_rate
         self.p = pyaudio.PyAudio()
         self.stream = None
         self.is_running = False
         
+        # Load config
+        self.config = config or {}
+        sys_audio_conf = self.config.get('system_audio', {})
+        
         # Audio configuration - 3s for real-time subtitles
         self.buffer_duration_ms = 3000  # 3s per user request
         self.samples_per_chunk = (self.target_rate * self.buffer_duration_ms) // 1000
         
         # Fixed gain - 10x (doubled per user request)
-        self.adaptive_gain_enabled = False  # Fixed gain
-        self.gain_min = 10.0  # Fixed
-        self.gain_max = 10.0  # Fixed
-        self.gain_current = 10.0  # 10x gain - doubled for higher volume
-        self.target_rms = 0.10  # Not used
+        self.adaptive_gain_enabled = sys_audio_conf.get('adaptive_gain', False)
+        self.gain_min = sys_audio_conf.get('gain_min', 10.0)
+        self.gain_max = sys_audio_conf.get('gain_max', 10.0)
+        self.gain_current = sys_audio_conf.get('gain_initial', 10.0)
+        self.target_rms = sys_audio_conf.get('target_rms', 0.10)
         
         # VAD configuration
         self.vad_enabled = True
-        self.vad_threshold = 0.005  # Lower than mic (0.012) for system audio
+        self.vad_threshold = sys_audio_conf.get('vad_threshold', 0.005)
         
         # Normalization
-        self.normalize_enabled = False  # DISABLED - was causing issues
+        self.normalize_enabled = sys_audio_conf.get('normalize', False)
         
         # Noise reduction
-        self.noise_reduction_enabled = False  # DISABLED - made hum worse
-        self.highpass_freq = 80  # Hz - Remove low frequency hum/rumble
+        self.noise_reduction_enabled = sys_audio_conf.get('noise_reduction', False)
+        self.highpass_freq = sys_audio_conf.get('highpass_freq', 80)
         
         # DEBUG MODE - Set to True to save all audio chunks
         self.debug_mode = True  # Re-enabled for debugging
         self.debug_save_interval = 1  # Save every chunk
         
         # Sentence-based segmentation (Balanced for stability)
-        self.sentence_mode = True  # Enable sentence detection
-        self.min_silence_duration = 0.2  # 200ms silence (balanced)
-        self.min_segment_duration = 0.8  # Minimum 0.8s (prevent too many chunks)
-        self.max_segment_duration = 3.0  # Maximum 3s (quick but stable)
-        self.silence_threshold = 0.003  # RMS below this = silence
+        self.sentence_mode = sys_audio_conf.get('sentence_mode', True)
+        
+        # VAD Parameters from Config (or defaults)
+        self.min_silence_duration = sys_audio_conf.get('min_silence_ms', 200) / 1000.0
+        self.min_segment_duration = sys_audio_conf.get('min_segment_ms', 800) / 1000.0
+        self.max_segment_duration = sys_audio_conf.get('max_segment_ms', 3000) / 1000.0
+        self.silence_threshold = sys_audio_conf.get('silence_threshold', 0.003)
+        
+        logger.info(f"🎤 System Audio VAD Config: MinSilence={self.min_silence_duration}s, "
+                   f"MinSeg={self.min_segment_duration}s, MaxSeg={self.max_segment_duration}s")
         
         # Tracking state
         self.is_speaking = False
