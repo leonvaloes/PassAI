@@ -47,9 +47,6 @@ function createWindow() {
 app.on('ready', () => {
   createWindow();
   
-  // Enable DevTools for debugging
-  mainWindow.webContents.openDevTools();
-  
   // Global hotkeys
   const registered = {
     pause: globalShortcut.register('CommandOrControl+Shift+P', () => {
