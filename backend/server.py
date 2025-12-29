@@ -497,9 +497,6 @@ async def health():
 from core.capture.screenshot_capture import ScreenshotCapture
 from pydantic import BaseModel
 
-# Initialize screenshot capture
-screenshot_capture = ScreenshotCapture()
-
 
 class ScreenshotRequest(BaseModel):
     monitor: int = 0  # 0 = all monitors, 1+ = specific monitor
@@ -510,6 +507,8 @@ class ScreenshotRequest(BaseModel):
 async def capture_screenshot(request: ScreenshotRequest):
     """Capture screenshot"""
     try:
+        # Initialize on demand to avoid startup issues
+        screenshot_capture = ScreenshotCapture()
         filepath, img = screenshot_capture.capture_screen(request.monitor)
         
         if filepath is None:
@@ -546,6 +545,7 @@ async def capture_screenshot(request: ScreenshotRequest):
 async def list_screenshots(limit: int = 20):
     """List recent screenshots"""
     try:
+        screenshot_capture = ScreenshotCapture()
         screenshots = screenshot_capture.list_screenshots(limit)
         return {
             "success": True,
@@ -564,6 +564,7 @@ async def list_screenshots(limit: int = 20):
 async def get_monitors():
     """Get available monitors"""
     try:
+        screenshot_capture = ScreenshotCapture()
         monitors = screenshot_capture.get_monitors()
         return {
             "success": True,
