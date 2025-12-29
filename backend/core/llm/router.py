@@ -363,13 +363,23 @@ Generate a brief, persuasive suggestion (1-2 sentences) for what the user should
             })
         
         # User message final pedindo sugestão
-        user_msg = f"Current intent: {current_intent}."
-        if screen_context:
-            user_msg += f"\n\nScreen context: {screen_context}"
-        user_msg += "\n\nGenerate a brief persuasive suggestion (1-2 sentences) for what I should say next."
+        if user_goal == "Answer":
+            user_msg = "" # Context already in history/system/previous messages
+            # Just add the intent context if needed, or let previous messages stand
+            if screen_context:
+                user_msg += f"Screen context:\n{screen_context}\n\n"
+            
+            user_msg += f"(Context: Intent={current_intent})"
+            # In chat mode, the last message in history is the user's actual question.
+            # We add a small system note to ensure it answers whatever was last.
+        else:
+            user_msg = f"Current intent: {current_intent}."
+            if screen_context:
+                user_msg += f"\n\nScreen context: {screen_context}"
+            user_msg += "\n\nGenerate a brief persuasive suggestion (1-2 sentences) for what I should say next."
         
         messages.append({
-            "role": "user",
+            "role": "system" if user_goal == "Answer" else "user", 
             "content": user_msg
         })
         
@@ -380,7 +390,13 @@ Generate a brief, persuasive suggestion (1-2 sentences) for what the user should
         base = """You are an AI sales coach helping in real-time during a conversation.
 Your role is to suggest persuasive, natural responses based on the conversation context."""
         
-        if user_goal == "sales":
+        if user_goal == "Answer":
+            return """You are a helpful and intelligent AI Software Engineer Assistant.
+Your goal is to answer the user's questions directly, accurately, and concisely.
+You have access to screen context if provided. Use it to give specific, relevant answers.
+Do not roleplay as a sales coach. Be a direct technical assistant."""
+        
+        elif user_goal == "sales":
             return base + """
 Focus on:
 - Building trust and rapport
