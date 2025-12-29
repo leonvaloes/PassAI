@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setIgnoreMouseEvents: (ignore, options) => {
     ipcRenderer.send('set-ignore-mouse-events', ignore, options);
   },
+  setOpacity: (opacity) => {
+    ipcRenderer.send('set-opacity', opacity);
+  },
   onHotkey: (callback) => {
     ipcRenderer.on('hotkey', (event, action) => callback(action));
   }

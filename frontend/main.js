@@ -38,6 +38,12 @@ function createWindow() {
     const win = BrowserWindow.fromWebContents(event.sender);
     win.setIgnoreMouseEvents(ignore, options);
   });
+  
+  ipcMain.on('set-opacity', (event, opacity) => {
+    if (mainWindow) {
+      mainWindow.setOpacity(opacity);
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
