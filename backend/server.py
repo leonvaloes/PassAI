@@ -582,9 +582,10 @@ async def get_monitors():
 
 
 # Serve screenshot files
-app.mount("/screenshots", StaticFiles(directory="backend/screenshots"), name="screenshots")
+screenshots_dir = os.path.join(os.path.dirname(__file__), "screenshots")
+os.makedirs(screenshots_dir, exist_ok=True)
+app.mount("/screenshots", StaticFiles(directory=screenshots_dir), name="screenshots")
 
 if __name__ == "__main__":
     setup_logging({'logging': {'level': 'INFO'}})
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-
