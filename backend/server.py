@@ -313,11 +313,18 @@ Use esta descrição para responder à pergunta do usuário como se você pudess
             ai_response = response['suggestion']
             
             # CHECK FOR ACTIVE VISION REQUEST [LOOK: ...]
-            if "[LOOK:" in ai_response and image_path:
+            if "[LOOK:" in ai_response:
+                clean_response = ai_response # Fallback
                 try:
                     import re
                     match = re.search(r"\[LOOK:\s*(.*?)\]", ai_response)
-                    if match:
+                    
+                    # ALWAYS strip the tag for the final user display, purely for cleanliness
+                    clean_response = re.sub(r"\[LOOK:\s*.*?\]", "", ai_response).strip()
+                    if not clean_response:
+                        clean_response = "Hmmm..." # Loading placeholder if empty
+
+                    if match and image_path:
                         query = match.group(1).strip()
                         print("\n" + "="*60)
                         logger.info(f"🕵️‍♂️ ACTIVE VISION TRIGGERED")
@@ -347,8 +354,22 @@ Now answer the user's original question based on this new information."""
                                 user_goal="Answer"
                             )
                             ai_response = response_final['suggestion']
+                        else:
+                            # Vision Failed
+                            logger.warning("Active vision query failed")
+                            ai_response = f"{clean_response}\n\n(Não consegui ver os detalhes: {vision_query_res.get('error')})"
+                    
+                    elif match and not image_path:
+                         # Tag triggered but no image
+                         logger.warning("Active vision triggered but NO IMAGE active")
+                         ai_response = f"{clean_response}\n\n(Eu preciso que você capture um screenshot para eu ver isso.)"
+                    else:
+                         # Regex match failed but tag present?
+                         ai_response = clean_response
+
                 except Exception as ex:
                     logger.error(f"Re-Act Loop Error: {ex}")
+                    ai_response = clean_response # Safe fallback
             
             self.ai_chat_history.append({"speaker": "assistant", "text": ai_response})
             

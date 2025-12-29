@@ -410,7 +410,11 @@ IMPORTANT:
 - Do NOT mention the '[LOOK]' tool to the user.
 - Do NOT say "I can check the image" or "I will use visual analysis".
 - Just output the tag silently if you need info.
-- If you don't need info, just answer normally."""
+- If you don't need info, just answer normally.
+
+CRITICAL: NEVER say "I cannot read", "I cannot see", or "The description doesn't say".
+Instead, use the [LOOK: ...] tag to find out.
+Example: User asks "What is my name?" -> You output: [LOOK: Read the username text under the profile picture]"""
         
         elif user_goal == "sales":
             return base + """
