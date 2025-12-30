@@ -1,7 +1,10 @@
 @echo off
-echo ========================================
-echo   AI Copilot - PassAI
-echo ========================================
+echo ╔════════════════════════════════════════╗
+echo ║                                        ║
+echo ║            🚀 PassAI 🧠                ║
+echo ║    AI-Powered Development Assistant    ║
+echo ║                                        ║
+echo ╚════════════════════════════════════════╝
 echo.
 
 REM Check if venv exists
@@ -24,13 +27,13 @@ echo Starting Backend and Frontend...
 echo.
 
 REM Start backend in new window (with venv activated)
-start "AI Copilot Backend" cmd /k "cd /d %~dp0 && call venv\Scripts\activate.bat && cd backend && python server.py"
+start "PassAI Backend" cmd /k "cd /d %~dp0 && call venv\Scripts\activate.bat && cd backend && python server.py"
 
 REM Wait 3 seconds for backend to initialize
 timeout /t 3 /nobreak > nul
 
 REM Start frontend in new window
-start "AI Copilot Frontend" cmd /k "cd /d %~dp0frontend && npm start"
+start "PassAI Frontend" cmd /k "cd /d %~dp0frontend && npm start"
 
 echo.
 echo ✅ Both services started!

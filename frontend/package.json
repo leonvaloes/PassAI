@@ -1,13 +1,13 @@
 {
-  "name": "ai-copilot-frontend",
+  "name": "passai-frontend",
   "version": "0.2.0",
-  "description": "AI Copilot - Electron Frontend",
+  "description": "PassAI - Electron Frontend",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder"
   },
-  "keywords": ["electron", "ai", "copilot"],
+  "keywords": ["electron", "ai", "passai"],
   "author": "",
   "license": "MIT",
   "devDependencies": {

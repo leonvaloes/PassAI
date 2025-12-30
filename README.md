@@ -1,25 +1,33 @@
-# 🎙️ AI Copilot - Audio Transcription & AI Assistant
+# 🚀 PassAI - AI-Powered Development Assistant
 
-Aplicação Electron para transcrição em tempo real com IA integrada.
+Assistente de desenvolvimento com transcrição em tempo real, Vision AI e chat inteligente.
 
 ## ✨ Features
 
-- 🎙️ **Captura de Microfone** - Transcrição instantânea
-- 🔊 **Captura de Áudio do Sistema** - Transcrição de apps/YouTube
-- 🤖 **IA Integrada** - Chat com Ollama/OpenAI
+- 🎙️ **Captura de Microfone** - Transcrição instantânea em PT-BR
+- 🔊 **Captura de Áudio do Sistema** - Transcrição de apps/YouTube/reuniões
+- 👁️ **Vision AI** - Análise de screenshots com LLaVA
+- 🤖 **Chat Inteligente** - Integração com Ollama/OpenAI
 - 🪟 **Interface Flutuante** - Always-on-top, transparente
 - 📊 **Medidores em Tempo Real** - Visualização de áudio
 
 ## 🚀 Quick Start
 
-### Backend
+### Método Rápido (Recomendado)
+```bash
+.\start.bat
+```
+
+### Manual
+
+**Backend:**
 ```bash
 cd d:\p2\ai-copilot
 venv\Scripts\activate
 python backend\server.py
 ```
 
-### Frontend
+**Frontend:**
 ```bash
 cd frontend
 npm start
@@ -28,8 +36,9 @@ npm start
 ## ⚙️ Configuração
 
 - **Config:** `backend/config/config.yaml`
-- **Modelo:** Whisper Large
-- **Ganho Áudio Sistema:** 30x (ajustável em `backend/core/capture/system_audio_capture.py`)
+- **Modelo ASR:** Whisper Large
+- **Vision AI:** LLaVA (via Ollama)
+- **Ganho Áudio Sistema:** Adaptativo (8-20x)
 
 ## 📝 Documentação
 
@@ -42,15 +51,16 @@ Ver `PROJECT_STATUS.md` para documentação completa.
 taskkill /F /IM python.exe
 ```
 
-**Áudio baixo:**
-- Aumentar `gain` em `system_audio_capture.py` (linha 77)
+**Ollama não conecta:**
+- Verificar se Ollama está rodando: `http://localhost:11434`
+- Instalar modelos: `ollama pull llama3.1:8b` e `ollama pull llava`
 
 ## 📊 Stack
 
-- **Backend:** Python, FastAPI, Whisper, PyAudioWPatch
+- **Backend:** Python, FastAPI, Whisper, PyAudioWPatch, LLaVA
 - **Frontend:** Electron, JavaScript
-- **IA:** Ollama / OpenAI
+- **IA:** Ollama (Llama 3.1, LLaVA) / OpenAI
 
 ---
 
-Desenvolvido com foco em transcrição de alta qualidade e IA em tempo real.
+**PassAI** - Desenvolvido com foco em produtividade e IA multimodal em tempo real.
