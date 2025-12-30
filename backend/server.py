@@ -703,6 +703,7 @@ async def get_monitors():
 
 
 
+
 # Serve screenshot files
 screenshots_dir = os.path.join(os.path.dirname(__file__), "screenshots")
 os.makedirs(screenshots_dir, exist_ok=True)
@@ -710,4 +711,12 @@ app.mount("/screenshots", StaticFiles(directory=screenshots_dir), name="screensh
 
 if __name__ == "__main__":
     setup_logging({'logging': {'level': 'INFO'}})
+    
+    # Initialize Resume Generator system
+    try:
+        init_resume_system()
+        logger.info("✅ Resume Generator API initialized")
+    except Exception as e:
+        logger.warning(f"⚠️ Resume Generator initialization failed: {e}")
+    
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
