@@ -27,7 +27,7 @@ from core.utils.logger import setup_logging
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AI Copilot", version="2.1")
+app = FastAPI(title="PassAI", version="2.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -35,6 +35,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Import and include Resume API routes
+from api.resume import router as resume_router, init_resume_system
+app.include_router(resume_router)
 
 
 from core.ai.vision_processor import VisionProcessor

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Generator - PassAI</title>
+    <link rel="stylesheet" href="resume-generator.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎯 Resume Generator</h1>
+            <p class="subtitle">Generate ATS-optimized resumes powered by AI</p>
+        </div>
+
+        <!-- Step 1: Job Input -->
+        <div class="section" id="step-input">
+            <div class="section-header">
+                <h2>Step 1: Input Job Posting</h2>
+                <span class="badge">Required</span>
+            </div>
+            
+            <div class="input-tabs">
+                <button class="tab active" data-tab="text">📝 Text</button>
+                <button class="tab" data-tab="url">🔗 URL</button>
+                <button class="tab" data-tab="file">📄 File</button>
+            </div>
+
+            <div class="tab-content active" id="tab-text">
+                <textarea 
+                    id="job-text" 
+                    placeholder="Paste job description here...
+                    
+Example:
+Backend Developer - Nubank
+Python, Django, AWS, Docker
+5+ years experience..."
+                    rows="8"
+                ></textarea>
+            </div>
+
+            <div class="tab-content" id="tab-url">
+                <input 
+                    type="url" 
+                    id="job-url" 
+                    placeholder="https://linkedin.com/jobs/..." 
+                    class="input-field"
+                />
+            </div>
+
+            <div class="tab-content" id="tab-file">
+                <div class="drop-zone" id="drop-zone">
+                    <div class="drop-zone-content">
+                        <span class="drop-icon">📁</span>
+                        <p>Drag & drop PDF or screenshot</p>
+                        <p class="drop-hint">or click to browse</p>
+                    </div>
+                    <input type="file" id="file-input" accept=".pdf,image/*" hidden>
+                </div>
+            </div>
+
+            <button id="btn-extract" class="btn btn-primary">
+                Extract Job Data →
+            </button>
+        </div>
+
+        <!-- Job Preview (hidden initially) -->
+        <div class="section hidden" id="step-preview">
+            <div class="section-header">
+                <h2>Job Preview</h2>
+                <span class="badge success">Extracted</span>
+            </div>
+
+            <div class="job-preview">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Position</label>
+                        <p id="preview-cargo">-</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Company</label>
+                        <p id="preview-empresa">-</p>
+                    </div>
+                    <div class="info-item">
+                        <label>ATS</label>
+                        <p id="preview-ats">-</p>
+                    </div>
+                    <div class="info-item">
+                        <label>Location</label>
+                        <p id="preview-local">-</p>
+                    </div>
+                </div>
+
+                <div class="requirements">
+                    <label>Technical Requirements</label>
+                    <div id="preview-tech" class="tags"></div>
+                </div>
+            </div>
+
+            <button id="btn-generate" class="btn btn-primary">
+                Generate Resumes 🚀
+            </button>
+        </div>
+
+        <!-- Generation Progress -->
+        <div class="section hidden" id="step-progress">
+            <div class="section-header">
+                <h2>Generating Variants...</h2>
+                <span class="badge" id="progress-badge">In Progress</span>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-stats">
+                    <div class="stat">
+                        <span class="stat-label">Round</span>
+                        <span class="stat-value" id="progress-round">0/10</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Variants</span>
+                        <span class="stat-value" id="progress-variants">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Approved</span>
+                        <span class="stat-value success" id="progress-approved">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Best Score</span>
+                        <span class="stat-value" id="progress-score">-</span>
+                    </div>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Variants Display -->
+        <div class="section hidden" id="step-results">
+            <div class="section-header">
+                <h2>Generated Resumes</h2>
+                <span class="badge success" id="results-count">0 variants</span>
+            </div>
+
+            <div class="filters">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="APPROVED">✅ Approved</button>
+                <button class="filter-btn" data-filter="RISK">⚠️ Risk</button>
+                <button class="filter-btn" data-filter="REJECTED">❌ Rejected</button>
+            </div>
+
+            <div id="variants-list" class="variants-list"></div>
+        </div>
+    </div>
+
+    <script src="resume-generator.js"></script>
+</body>
+</html>
