@@ -11,16 +11,17 @@ cd d:\p2\ai-copilot
 # MongoDB
 docker-compose up -d
 
-# Ativar venv
-.\venv\Scripts\activate
+# Ativar venv (IMPORTANTE!)
+.\venv\Scripts\Activate.ps1
 
-# Instalar dependências (dentro do venv)
-pip install -r backend\requirements.txt
+# Instalar dependências (dentro do venv - PRIMEIRA VEZ)
+.\venv\Scripts\pip.exe install -r backend\requirements.txt
 ```
 
 ### 2. Executar Exemplo
 
 ```bash
+# Com venv ativado
 python example_resume_generator.py
 ```
 
