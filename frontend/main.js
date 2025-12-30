@@ -2,6 +2,7 @@ const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
 const path = require('path');
 
 let mainWindow;
+let resumeWindow = null; // Resume Generator window
 
 function createWindow() {
   const { screen } = require('electron');
@@ -49,6 +50,38 @@ function createWindow() {
     mainWindow = null;
   });
 }
+
+// Resume Generator window
+function createResumeWindow() {
+  if (resumeWindow) {
+    resumeWindow.focus();
+    return;
+  }
+
+  resumeWindow = new BrowserWindow({
+    width: 1000,
+    height: 800,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    title: 'Resume Generator - PassAI',
+    backgroundColor: '#1a1a2e'
+  });
+
+  resumeWindow.loadFile('renderer/windows/resume-generator/resume-generator.html');
+  resumeWindow.webContents.openDevTools(); // For debugging
+
+  resumeWindow.on('closed', () => {
+    resumeWindow = null;
+  });
+}
+
+// IPC Handler for opening Resume Generator
+ipcMain.on('open-resume-generator', () => {
+  createResumeWindow();
+});
 
 app.on('ready', () => {
   createWindow();
