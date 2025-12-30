@@ -112,8 +112,8 @@ class VariantGenerator:
                 variant.ats_score = score
                 variant.ats_status = self._classify_status(score)
                 
-                # Save to MongoDB
-                variant_id = self.db.insert_variant(variant.dict(by_alias=True))
+                # Save to MongoDB (exclude id to let MongoDB generate it)
+                variant_id = self.db.insert_variant(variant.dict(by_alias=True, exclude={'id'}))
                 variant.id = variant_id
                 
                 all_variants.append(variant)
