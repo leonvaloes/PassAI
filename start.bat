@@ -26,19 +26,19 @@ echo.
 echo Starting Backend and Frontend...
 echo.
 
-REM Start backend in new window (with venv activated)
-start "PassAI Backend" cmd /k "cd /d %~dp0 && call venv\Scripts\activate.bat && cd backend && python server.py"
+REM Start backend in background (same terminal)
+cd backend
+start /b python server.py
+cd ..
 
 REM Wait 3 seconds for backend to initialize
 timeout /t 3 /nobreak > nul
 
-REM Start frontend in new window
-start "PassAI Frontend" cmd /k "cd /d %~dp0frontend && npm start"
+REM Start frontend in foreground (blocks terminal - shows Electron output)
+cd frontend
+call npm start
 
+REM This will only run after npm/electron exits
 echo.
-echo ✅ Both services started!
-echo Backend: http://localhost:8000
-echo Frontend: Electron window
-echo.
-echo Press any key to exit this window...
-pause > nul
+echo ✅ Services stopped.
+pause
