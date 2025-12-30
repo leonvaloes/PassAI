@@ -1,0 +1,49 @@
+# Resume Generator Configuration
+
+resume:
+  # Generation parameters
+  max_variants: 30
+  max_rounds: 10
+  batch_size: 5
+  no_improve_rounds: 3  # Stop after N rounds without improvement
+  
+  # Scoring thresholds
+  approval_threshold: 95.0  # Min score for APPROVED status
+  risk_threshold: 80.0      # Below this = REJECTED
+  
+  # Template
+  template_path: "templates/cv_template.docx"
+  max_pages: 2
+  
+  # Perguntas inteligentes
+  ask_confirmation_on_new: true  # Perguntar antes de incluir info nova
+  
+  # MongoDB
+  mongodb_uri: "mongodb://localhost:27017/"
+  db_name: "passai"
+  
+  # Vector DB (ChromaDB)
+  chroma_path: "data/chromadb"
+  embedding_model: "all-MiniLM-L6-v2"  # SentenceTransformers
+  
+  # LLM for generation
+  llm_provider: "ollama"
+  llm_model: "llama3.1:8b"
+  temperature_base: 0.7
+  temperature_increment: 0.05  # Increase per round
+  
+  # Ranking weights
+  ranking_weights:
+    ats_score: 0.40
+    clarity: 0.15
+    impact: 0.15
+    concision: 0.10
+    seniority_match: 0.10
+    naturalness: 0.10
+
+# ATS simulation weights
+ats_weights:
+  keywords: 0.40
+  formatting: 0.25
+  structure: 0.20
+  checklist: 0.15
