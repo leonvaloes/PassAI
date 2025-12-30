@@ -12,7 +12,7 @@ resume:
   risk_threshold: 80.0      # Below this = REJECTED
   
   # Template
-  template_path: "templates/cv_template.docx"
+  template_path: "layoutCV/layout.docx"
   max_pages: 2
   
   # Perguntas inteligentes

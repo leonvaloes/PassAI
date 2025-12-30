@@ -11,10 +11,10 @@ from modules.resume.ats_detector import ATSDetector
 from modules.resume.variant_generator import VariantGenerator
 from modules.resume.ats_simulator import ATSSimulator
 from modules.resume.ranker import Ranker
-from modules.resume.knowledge_base import KnowledgeBase
+# from modules.resume.knowledge_base import KnowledgeBase  # Disabled - ChromaDB not installed
 from modules.resume.template_engine import TemplateEngine
 from modules.resume.learning_engine import LearningEngine
-from core.llm.router import LLMRouter
+from modules.resume.llm_adapter import create_llm_for_resume  # Adapter
 from core.ai.vision_processor import VisionProcessor
 from database.mongodb import get_mongodb
 import yaml
@@ -35,15 +35,18 @@ def main():
         config = yaml.safe_load(f)['resume']
     
     # Initialize components
-    llm_router = LLMRouter()
+    llm_router = create_llm_for_resume()  # Adapter for compatibility
     vision_processor = VisionProcessor()
     db = get_mongodb()
     
     ats_detector = ATSDetector()
-    knowledge_base = KnowledgeBase(
-        chroma_path=config['chroma_path'],
-        embedding_model=config['embedding_model']
-    )
+    
+    # KnowledgeBase disabled (ChromaDB not installed - Python 3.14 incompatible)
+    # knowledge_base = KnowledgeBase(
+    #     chroma_path=config['chroma_path'],
+    #     embedding_model=config['embedding_model']
+    # )
+    knowledge_base = None  # System works without RAG
     
     ats_simulator = ATSSimulator(ats_detector)
     ranker = Ranker(config)
@@ -57,7 +60,7 @@ def main():
     
     variant_generator = VariantGenerator(
         llm_router=llm_router,
-        knowledge_base=knowledge_base,
+        knowledge_base=knowledge_base,  # Can be None
         ats_simulator=ats_simulator,
         config=config
     )
@@ -93,6 +96,10 @@ def main():
         "type": "text",
         "content": vaga_texto
     })
+    
+    # Save job to MongoDB to get ID
+    job_id = db.insert_job(job.dict(by_alias=True, exclude={'id'}))
+    job.id = job_id
     
     print(f"✅ Vaga extraída:")
     print(f"   Cargo: {job.cargo}")

@@ -303,6 +303,9 @@ JSON:
     
     def _get_rag_context(self, job: Job) -> str:
         """Get relevant context from knowledge base"""
+        if not self.kb:
+            return "Nenhum contexto RAG disponível (ChromaDB não instalado)."
+        
         query = f"Como otimizar currículo para {job.cargo} usando ATS {job.ats_detectado.value}"
         
         results = self.kb.query(query, ats_type=job.ats_detectado, top_k=3)
