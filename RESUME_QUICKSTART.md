@@ -5,12 +5,17 @@
 ### 1. Setup
 
 ```bash
+# Entrar na pasta do projeto
+cd d:\p2\ai-copilot
+
 # MongoDB
 docker-compose up -d
 
-# Instalar dependências
-pip install -r backend/modules/resume/requirements.txt
-pip install -r backend/modules/resume/scraping_requirements.txt
+# Ativar venv
+.\venv\Scripts\activate
+
+# Instalar dependências (dentro do venv)
+pip install -r backend\requirements.txt
 ```
 
 ### 2. Executar Exemplo
