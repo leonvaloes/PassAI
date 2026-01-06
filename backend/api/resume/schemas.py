@@ -34,7 +34,7 @@ class JobResponse(BaseModel):
 
 class GenerateRequest(BaseModel):
     """Request to generate variants"""
-    base_resume: Dict[str, Any] = Field(..., description="User's base resume data")
+    base_resume: Optional[Dict[str, Any]] = None
 
 
 class VariantResponse(BaseModel):

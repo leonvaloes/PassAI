@@ -46,6 +46,14 @@ class ATSStatus(str, Enum):
     REJECTED = "REJECTED"
 
 
+class JobStatus(str, Enum):
+    """Job processing status"""
+    CREATED = "CREATED"
+    GENERATING = "GENERATING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
 class Job(BaseModel):
     """Job posting model"""
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
@@ -68,6 +76,10 @@ class Job(BaseModel):
     # ATS detection
     ats_detectado: ATSType = ATSType.UNKNOWN
     ats_confirmado: bool = False
+    
+    # Status
+    status: JobStatus = JobStatus.CREATED
+    error_message: Optional[str] = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -157,3 +169,4 @@ class KnowledgeChunk(BaseModel):
     class Config:
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
+

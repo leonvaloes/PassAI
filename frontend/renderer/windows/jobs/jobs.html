@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jobs - PassAI</title>
+    <link rel="stylesheet" href="jobs.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div>
+                    <h1>💼 Job Listings</h1>
+                    <p class="subtitle">Browse and filter found opportunities</p>
+                </div>
+                <div class="header-stats">
+                    <span id="jobs-count">0 jobs</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <input 
+                type="text" 
+                id="search-input" 
+                placeholder="🔍 Search by title, company, or keywords..."
+                oninput="filterJobs()"
+            />
+            <select id="country-filter" onchange="filterJobs()">
+                <option value="">All Countries</option>
+                <option value="Brazil">Brazil</option>
+                <option value="Estados Unidos">United States</option>
+                <option value="Canada">Canada</option>
+            </select>
+            <button class="btn-refresh" onclick="loadJobs()">🔄 Refresh</button>
+        </div>
+
+        <!-- Jobs List -->
+        <div id="jobs-list" class="jobs-list">
+            <div class="loading">Loading jobs...</div>
+        </div>
+    </div>
+
+    <script src="jobs.js"></script>
+</body>
+</html>

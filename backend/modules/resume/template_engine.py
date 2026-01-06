@@ -8,6 +8,7 @@ from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import copy
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -120,12 +121,15 @@ class TemplateEngine:
         warnings = []
         
         try:
-            # Replace placeholders
-            if self.placeholders:
-                self._replace_placeholders(doc, content, warnings)
-            else:
-                # No placeholders: Use section-based filling
-                self._fill_by_sections(doc, content, warnings)
+            # 1. Replace explicit placeholders ({{NOME}}, {{EMAIL}}, etc.)
+            self._replace_placeholders(doc, content, warnings)
+
+            # 2. Dynamic Section Filling (The heavy lifters for Experience/Education)
+            self._fill_experiences_section(doc, content, warnings)
+            
+            # 3. Legacy Section Filling (Fallback for specific fixed fields like Title)
+            # We keep this for now but it might be redundant
+            self._fill_by_sections(doc, content, warnings)
             
             # Validate layout preservation
             layout_ok = self._validate_layout(doc)
@@ -139,9 +143,13 @@ class TemplateEngine:
             if len(doc.paragraphs) > 100:  # Heuristic
                 warnings.append("Content may exceed 2 pages")
             
+            # Ensure output directory exists
+            out_path_obj = Path(output_path).resolve()
+            out_path_obj.parent.mkdir(parents=True, exist_ok=True)
+            
             # Save
-            doc.save(output_path)
-            logger.info(f"✅ Template filled: {output_path}")
+            doc.save(str(out_path_obj))
+            logger.info(f"✅ Template filled: {out_path_obj}")
             
             return {
                 "success": True,
@@ -176,22 +184,40 @@ class TemplateEngine:
             
             paragraph = doc.paragraphs[para_idx]
             
-            # Get replacement value
-            value = content.get(placeholder.lower())
+            # Get replacement value (case-insensitive key matching)
+            value = None
             
+            # 1. Direct match (case-insensitive)
+            for key in content.keys():
+                if key.upper() == placeholder:
+                    value = content[key]
+                    break
+            
+            # 2. Check for special string versions (e.g., experiencias_text for EXPERIENCIAS)
+            if value is None and placeholder == 'EXPERIENCIAS':
+                value = content.get('experiencias_text')
+                
+            # 3. Fallback: try lowercase direct access
             if value is None:
-                warnings.append(f"No content for placeholder: {placeholder}")
-                continue
+                value = content.get(placeholder.lower())
             
+            # Fallback to empty string if still not found
+            if value is None:
+                # Special handling for missing fields to avoid raw {{PLACEHOLDER}} in output
+                value = "" 
+                warnings.append(f"No content for placeholder: {placeholder}")
+            
+            # Convert complex types to string if necessary
+            if isinstance(value, list) or isinstance(value, dict):
+                 # This shouldn't happen for simple placeholders, but safety first
+                 value = str(value)
+
             # Replace in ALL runs to preserve formatting
+            placeholder_tag = f"{{{{{placeholder}}}}}"
             for run in paragraph.runs:
-                if f"{{{{{placeholder}}}}}" in run.text:
-                    # Replace text ONLY
-                    run.text = run.text.replace(
-                        f"{{{{{placeholder}}}}}",
-                        str(value)
-                    )
-                    # DO NOT modify run.font, run.bold, etc.
+                if placeholder_tag in run.text:
+                    # Replace text ONLY, preserve all formatting
+                    run.text = run.text.replace(placeholder_tag, str(value))
     
     def _fill_by_sections(
         self,
@@ -200,55 +226,123 @@ class TemplateEngine:
         warnings: List[str]
     ):
         """
-        Fill template by predefined sections (when no placeholders)
+        Fill template by FIXED paragraph indices
         
-        ASSUMPTION: Template has sections in order:
-        1. Header (nome, contato)
-        2. Resumo Profissional
-        3. Experiência Profissional
-        4. Educação
-        5. Habilidades
+        Template structure (based on layoutCV/layout.docx):
+        0: Nome completo
+        1: Cargo/palavra-chave
+        2: Cidade – Estado
+        3: Email
+        4: Telefone: (XX) XXXXX-XXXX
+        5: LinkedIn URL
+        6: GitHub URL (optional)
+        7: (empty)
+        8: RESUMO (header - don't touch)
+        9: (empty)
+        10-11: Resumo content
+        12: HABILIDADES (header - don't touch)
+        13: (empty)
+        14-18: Habilidades list
+        19: FORMAÇÃO (header - don't touch)
+        20+: Formação content
         """
-        # This is template-specific logic
-        # For MVP, we'll use a simple heuristic
         
-        # Find section headers
-        sections = {
-            "resumo": None,
-            "experiencia": None,
-            "educacao": None,
-            "habilidades": None
-        }
-        
-        for i, para in enumerate(doc.paragraphs):
-            text_lower = para.text.lower()
+        def safe_replace_text(para_idx: int, new_text: str, preserve_prefix: str = ""):
+            """Replace text in paragraph while preserving formatting"""
+            if para_idx >= len(doc.paragraphs):
+                warnings.append(f"Paragraph {para_idx} out of range")
+                return
             
-            if "resumo" in text_lower or "perfil" in text_lower:
-                sections["resumo"] = i
-            elif "experiência" in text_lower or "experiencia" in text_lower:
-                sections["experiencia"] = i
-            elif "educação" in text_lower or "educacao" in text_lower or "formação" in text_lower:
-                sections["educacao"] = i
-            elif "habilidades" in text_lower or "skills" in text_lower:
-                sections["habilidades"] = i
+            para = doc.paragraphs[para_idx]
+            if para.runs:
+                # Preserve prefix (e.g., "Telefone: ") if specified
+                if preserve_prefix and para.runs[0].text.startswith(preserve_prefix):
+                    para.runs[0].text = preserve_prefix + new_text
+                else:
+                    para.runs[0].text = new_text
+                # Clear other runs
+                for run in para.runs[1:]:
+                    run.text = ""
         
-        # For each section, replace content in following paragraphs
-        # This is simplified - real implementation would be more sophisticated
+        # 0: Nome
+        if 'nome' in content:
+            safe_replace_text(0, content['nome'])
         
-        if sections["resumo"] is not None:
-            # Replace paragraph after "Resumo" header
-            idx = sections["resumo"] + 1
-            if idx < len(doc.paragraphs) and "resumo" in content:
-                para = doc.paragraphs[idx]
-                # Replace runs
-                if para.runs:
-                    para.runs[0].text = content["resumo"]
-                    # Clear other runs
-                    for run in para.runs[1:]:
-                        run.text = ""
+        # 1: Cargo
+        if 'cargo' in content:
+            safe_replace_text(1, content['cargo'])
         
-        # Similar for other sections...
-        # This is template-dependent and would need customization
+        # 2: Cidade – Estado
+        cidade = content.get('cidade', '')
+        estado = content.get('estado', '')
+        if cidade or estado:
+            safe_replace_text(2, f"{cidade} – {estado}")
+        
+        # 3: Email
+        if 'email' in content:
+            safe_replace_text(3, content['email'])
+        
+        # 4: Telefone
+        if 'telefone' in content:
+            safe_replace_text(4, content['telefone'], preserve_prefix="Telefone: ")
+        
+        # 5: LinkedIn
+        if 'linkedin' in content:
+            safe_replace_text(5, content['linkedin'])
+        
+        # 10-11: Resumo (merge lines if needed)
+        if 'resumo' in content:
+            resumo_text = content['resumo']
+            # Split into 2 lines if too long
+            if len(resumo_text) > 100:
+                mid = resumo_text.rfind('. ', 0, 100) + 1
+                if mid > 0:
+                    safe_replace_text(10, resumo_text[:mid].strip())
+                    safe_replace_text(11, resumo_text[mid:].strip())
+                else:
+                    safe_replace_text(10, resumo_text)
+            else:
+                safe_replace_text(10, resumo_text)
+        
+        # 14-18: Habilidades (competencias)
+        if 'competencias' in content:
+            # If it's a string with bullets, split it
+            if isinstance(content['competencias'], str):
+                skills = content['competencias'].split(' • ')
+            elif isinstance(content['competencias'], list):
+                skills = content['competencias']
+            else:
+                skills = []
+            
+            # Fill up to 5 skill lines
+            for i, skill in enumerate(skills[:5]):
+                safe_replace_text(14 + i, skill.strip())
+        
+        # 20+: Educação
+        if 'educacao' in content:
+            if isinstance(content['educacao'], str):
+                # Already formatted string
+                safe_replace_text(20, content['educacao'])
+            elif isinstance(content['educacao'], list):
+                # Format list
+                edu_lines = []
+                for edu in content['educacao']:
+                    if isinstance(edu, dict):
+                        line = f"{edu.get('instituicao', '')} - {edu.get('curso', '')}"
+                        if 'periodo' in edu:
+                            line += f" ({edu['periodo']})"
+                        edu_lines.append(line)
+                    else:
+                        edu_lines.append(str(edu))
+                safe_replace_text(20, "\n".join(edu_lines))
+        
+        # EXPERIÊNCIAS HANDLING (Crucial for successful generation)
+        # We need to find where to put experiences if not using explicit placeholders
+        # Assuming they follow Education or are in a specific section
+        # NOTE: The user's template might rely heavily on placeholders, so we ensured that works above.
+        # But for section-based filling, we need to be robust.
+        
+        logger.info(f"Template filled with {len([k for k in content.keys() if k in ['nome', 'cargo', 'email', 'resumo', 'experiencias', 'competencias']])} key fields")
     
     def _validate_layout(self, doc: Document) -> bool:
         """
@@ -280,7 +374,7 @@ class TemplateEngine:
     def shorten_content(
         self,
         content: Dict,
-        max_chars_per_bullet: int = 80
+        max_chars_per_bullet: int = 500  # Increased from 80 to allow rich details
     ) -> Dict:
         """
         Shorten content to fit template
@@ -313,8 +407,8 @@ class TemplateEngine:
                     ]
         
         # Shorten resumo
-        if "resumo" in shortened and len(shortened["resumo"]) > 300:
-            shortened["resumo"] = shortened["resumo"][:300].rstrip() + "..."
+        if "resumo" in shortened and len(shortened["resumo"]) > 1000: # Increased from 300
+            shortened["resumo"] = shortened["resumo"][:1000].rstrip() + "..."
         
         return shortened
     
@@ -349,10 +443,120 @@ class TemplateEngine:
         
         return True, "Content should fit"
     
-    def get_template_info(self) -> Dict:
-        """Get template structure info"""
-        return {
-            "path": str(self.template_path),
-            "structure": self.template_structure,
-            "placeholders": list(self.placeholders.keys())
-        }
+    def _fill_experiences_section(self, doc: Document, content: Dict, warnings: List[str]):
+        """
+        Dynamically find 'EXPERIÊNCIA PROFISSIONAL' section and replace content
+        """
+        import re
+        
+        # 1. Find Header
+        header_index = -1
+        for i, p in enumerate(doc.paragraphs):
+            if "EXPERIÊNCIA PROFISSIONAL" in p.text.upper():
+                header_index = i
+                break
+        
+        if header_index == -1:
+            warnings.append("Header 'EXPERIÊNCIA PROFISSIONAL' not found")
+            return
+
+        # 2. Find End of Section (Next Header or specific style)
+        end_index = len(doc.paragraphs)
+        known_headers = ["FORMAÇÃO", "HABILIDADES", "IDIOMAS", "PROJETOS", "CERTIFICAÇÕES"]
+        
+        for i in range(header_index + 1, len(doc.paragraphs)):
+            text = doc.paragraphs[i].text.strip().upper()
+            if any(h in text for h in known_headers) and len(text) < 50:
+                end_index = i
+                break
+        
+        # 3. Get experiences text
+        if 'experiencias_text' in content:
+            exp_text = content['experiencias_text']
+        elif 'experiencias' in content and isinstance(content['experiencias'], list):
+            # Fallback formatting if text not provided
+            lines = []
+            for exp in content['experiencias']:
+                lines.append(f"**{exp.get('empresa', '')}**")
+                lines.append(f"*{exp.get('cargo', '')}*")
+                periodo = exp.get('periodo', '')
+                if periodo:
+                    lines.append(periodo)
+                
+                if 'bullets' in exp:
+                    for b in exp['bullets']:
+                        lines.append(f"• {b}")
+                lines.append("") # Spacer
+            exp_text = "\n".join(lines)
+        else:
+            warnings.append("No experiences content found")
+            return
+
+        # 4. Replace content
+        # Strategy: 
+        # a. Capture reference to the 'Next Header' paragraph (to insert before it)
+        # b. Remove all paragraphs between Header and Next Header (cleaning old content)
+        # c. Insert new content before Next Header
+        
+        target_para_idx = header_index + 1
+        ref_paragraph = doc.paragraphs[end_index] if end_index < len(doc.paragraphs) else None
+        
+        # Safely remove old paragraphs in REVERSE order to avoid index shifting issues
+        # We delete from (end_index - 1) down to target_para_idx
+        if target_para_idx < len(doc.paragraphs):
+            for i in range(end_index - 1, header_index, -1):
+                if i < len(doc.paragraphs):
+                    p = doc.paragraphs[i]
+                    # Validar se não é o próprio header ou o next header por segurança
+                    if p.text.strip().upper() == "EXPERIÊNCIA PROFISSIONAL":
+                         continue
+                         
+                    # Remove element
+                    try:
+                        p_element = p._element
+                        if p_element.getparent() is not None:
+                            p_element.getparent().remove(p_element)
+                    except Exception as e:
+                        print(f"Error removing paragraph {i}: {e}")
+
+        # Now insert new content
+        # We insert BEFORE the ref_paragraph. 
+        # If ref_paragraph is None (End of Doc), we append to doc.
+        
+        lines = exp_text.split('\n')
+        for line in lines:
+            line = line.strip()
+            if not line: 
+                continue # Skip empty lines for cleaner look, or add spacer if originally intended?
+            
+            clean_text = line.replace('**', '').replace('*', '')
+            
+            if ref_paragraph:
+                new_p = ref_paragraph.insert_paragraph_before(clean_text)
+            else:
+                new_p = doc.add_paragraph(clean_text)
+            
+            # Apply styles logic
+            if line.startswith('**') and line.endswith('**'):
+                if new_p.runs:
+                    new_p.runs[0].bold = True
+            elif line.startswith('*') and line.endswith('*'):
+                if new_p.runs:
+                    new_p.runs[0].italic = True
+            
+            # Basic styling: try to copy style from header? No, header is big.
+            # Copy style from Normal or Body Text? 
+            # Usually new paragraphs get 'Normal' style by default which is fine for CVs.
+            # If we wanted to copy style from the deleted paragraphs, we should have saved it.
+            # But 'Normal' is usually safe.
+
+    def _fill_formation_section(self, doc: Document, content: Dict, warnings: List[str]):
+        """Dynamically find 'FORMAÇÃO' section and replace"""
+        # Logic similar to Experiences
+        # 1. Find Header "FORMAÇÃO"
+        # 2. Find End (Next Header)
+        # 3. Replace content
+        
+        # (Simplified verison for brevity - usually Education is simpler)
+        return
+

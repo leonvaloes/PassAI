@@ -1,5 +1,18 @@
 // UI Controller - Handles UI interactions
 
+function openResumeGenerator() {
+  window.electronAPI.send('open-resume-generator');
+}
+
+function openJobs() {
+  window.electronAPI.send('open-jobs');
+}
+
+function openSearchProfiles() {
+  window.electronAPI.send('open-search-profiles');
+}
+
+
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   sidebar.classList.toggle('hidden-sidebar');

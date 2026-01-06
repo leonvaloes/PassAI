@@ -43,6 +43,8 @@ models/*.pth
 
 # Config (if contains secrets)
 # config/config.yaml
+.env
+linkedin_cookies.pkl
 
 # Artifacts (personal notes)
 .gemini/

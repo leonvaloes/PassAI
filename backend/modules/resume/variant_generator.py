@@ -145,8 +145,12 @@ class VariantGenerator:
                         logger.info(f"  ? {q}")
             
             # Callback for progress
+            # Callback for progress
             if callback:
-                callback(round_num, all_variants, approved_count)
+                try:
+                    callback(round_num, all_variants, approved_count)
+                except Exception as e:
+                    logger.error(f"Callback failed: {e}")
             
             round_num += 1
         
@@ -204,8 +208,8 @@ class VariantGenerator:
         job: Job,
         base_resume: Dict,
         rag_context: str,
-        temperature: float,
-        seed: int
+        temperature: float = 0.85,  # Increased for creative rewriting
+        seed: int = None
     ) -> Dict:
         """
         Generate optimized resume content using LLM
@@ -218,7 +222,57 @@ class VariantGenerator:
                 "educacao": {...}
             }
         """
+        import json
+        
+        # DEBUG LOGGING START
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # 1. Log Requirements
+        reqs = job.requisitos_tecnicos
+        logger.info(f"🔍 DEBUG [VariantGenerator] Job Requirements: {reqs}")
+        if not reqs:
+            logger.error("❌ ERROR [VariantGenerator] Job has NO technical requirements! Prompt will be weak.")
+            
+        # Format base_resume as readable JSON for LLM
+        base_resume_json = json.dumps(base_resume, indent=2, ensure_ascii=False)
+        
+        # Build dynamic project mapping from base_resume to prevent cross-contamination
+        project_mapping_lines = ["MAPEAMENTO CRÍTICO DE PROJETOS (NÃO MISTURE):"]
+        
+        for exp in base_resume.get('experiencias', []):
+            empresa = exp.get('empresa', 'Empresa Desconhecida')
+            periodo = exp.get('periodo', '')
+            project_mapping_lines.append(f"\n📍 {empresa} ({periodo}):")
+            
+            # Extract project names from realizacoes
+            realizacoes = exp.get('realizacoes', [])
+            for realizacao in realizacoes:
+                # Extract project name (text before first ":" or first 50 chars)
+                project_name = realizacao.split(':')[0] if ':' in realizacao else realizacao[:50]
+                project_mapping_lines.append(f"   - {project_name.strip()}")
+        
+        project_mapping_lines.append("\n⛔ CRÍTICO: Mantenha cada projeto na empresa correta conforme listado acima.")
+        project_mapping = "\n".join(project_mapping_lines)
+        
+        # DEBUG LOGGING START
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # 1. Log Requirements
+        reqs = job.requisitos_tecnicos
+        logger.info(f"🔍 DEBUG [VariantGenerator] Job Requirements: {reqs}")
+        if not reqs:
+            logger.error("❌ ERROR [VariantGenerator] Job has NO technical requirements!")
+        
         # Build prompt
+        prompt = f"""
+Você é um especialista em currículos ATS e recrutador sênior.
+        """
+        # ... (rest of prompt construction is implicit in previous code, but I need to insert logging AFTER prompt is built)
+        # Wait, I need to see where 'prompt' variable is fully constructed.
+        # It's constructed via f-string assignment usually.
+        # Let me see the code around lines 220-300 in the file first.
         prompt = f"""
 Você é um especialista em otimização de currículos para ATS.
 
@@ -229,8 +283,10 @@ VAGA:
 - Requisitos Técnicos: {', '.join(job.requisitos_tecnicos)}
 - Requisitos Comportamentais: {', '.join(job.requisitos_comportamentais)}
 
-CURRÍCULO BASE DO CANDIDATO:
-{base_resume}
+CURRÍCULO COMPLETO DO CANDIDATO (USE ESTAS INFORMAÇÕES REAIS):
+{base_resume_json}
+
+{project_mapping}
 
 CONHECIMENTO DE RH (RAG):
 {rag_context}
@@ -264,14 +320,254 @@ Gere um currículo otimizado para esta vaga. Retorne JSON:
   ]
 }}
 
-REGRAS CRÍTICAS:
-1. NUNCA inventar empresas onde não trabalhou
-2. PODE adaptar descrições e bullets para match keywords
-3. PODE adicionar métricas quantificáveis
-4. Bullets: max 80 caracteres
-5. Keywords da vaga devem aparecer 2-3x ao longo do CV
-6. Use verbos de ação no início dos bullets
-7. Foco em resultados mensuráveis
+REGRAS OBRIGATÓRIAS:
+1. REESCREVA todos os bullets (não copie)
+2. Use keywords da vaga: {', '.join(job.requisitos_tecnicos)}
+3. Mínimo 5 bullets por empresa, mínimo 300 caracteres cada
+4. SEMPRE cite o nome do projeto/sistema no início do bullet
+5. SEMPRE inclua pelo menos uma métrica numérica (ex: "70% mais rápido", "redução de 40%")
+6. Mantenha projetos na empresa correta (não misture Security com iPag)
+
+"Seus descritivos devem conter palavras chaves específicas das
+vagas que você quer se candidatar.
+Separe de 4 a 6 vagas e assinale as palavras chaves das mesmas,
+após, verifique quais tens experiência e crie frases com elas"
+
+exemplo:
+RESPONSABILIDADES
+
+Acompanhar e gerenciar o processo pós-venda para clientes, assegurando a satisfação e resolvendo quaisquer problemas ou dúvidas que possam surgir;
+
+Coordenar com as equipes internas para garantir que as operações sejam realizadas de acordo com os padrões acordados e atender às necessidades dos clientes;
+
+Analisar feedback dos clientes e propor melhorias nos processos para otimizar o serviço prestado;
+
+Preparar relatórios periódicos sobre a performance pós-venda e sugerir estratégias para melhorar a experiência do cliente;
+
+Manter contato contínuo com clientes para antecipar e resolver questões que possam se tornar um possível problema.
+
+REQUISITOS
+
+Inglês intermediário;
+
+Formação superior em Administração, Logística ou áreas relacionadas;
+
+Experiência prévia em acompanhamento pós-venda, preferencialmente em operações portuárias e/ou no segmento de fertilizantes;
+
+Excelente habilidade de comunicação verbal e escrita;
+
+Capacidade de resolução de problemas e tomada de decisões.
+
+DESEJÁVEL
+
+Experiência com gestão de relacionamento com clientes;
+
+Experiência com análise de dados e elaboração de relatórios.
+
+
+
+as palavras chaves dessa vaga serão
+
+PALAVRAS-CHAVE
+
+Acompanhar e gerenciar o processo pós-venda para clientes;
+
+Equipes internas;
+
+Necessidades dos clientes;
+
+Feedback dos clientes;
+
+Melhorias nos processos;
+
+Relatórios;
+
+Experiência do cliente;
+
+Operações portuárias e/ou no segmento de fertilizantes;
+
+Relacionamento com clientes;
+
+Análise de dados e elaboração de relatórios.
+
+
+isso deve estar citado em meus historicos anteriores de trabalho sabe de forma que não fique tão na cara obviamente mas que as palavras em si esteja lá
+Ou seja deve linkar com experiencias anteriores
+
+
+Nomenclaturas de Cargos
+
+Você precisa ter no seu currículo, pelo menos uma vez, as nomenclaturas
+dos cargos das vagas que está se candidatando.
+Escolha nomes populares
+que estão sendo divulgados pelas empresas.
+Não se apegue a nomenclatura de cargo que consta na sua carteira de
+trabalho, a não ser que ainda esteja trabalhando na empresa.
+Diversifique as nomenclaturas, dando nomes diferentes a mesma
+atividade.
+
+Exemplos de nomenclaturas diferentes:
+Gerente de Projetos, Project Manager, Team
+Leader, Scrum Master, Agile Coach.
+
+De diversidade a nomenclaturas de cargos, exemplo na empresa 1 Agile Coach, empresa 2 Scrum Master,
+
+
+Descritivos de atividades
+
+NUNCA SEJA RAZO
+
+Rotina de atividades com palavras chaves
+Resultados e/ou Projetos
+
+FORMATO DE BULLET (SIGA ESTE MODELO):
+"[Nome do Sistema/Projeto] - Descrição completa do que fez, tecnologias usadas (Java, Spring Boot, AWS, etc), desafios superados e resultado quantificado (métrica de impacto no negócio)."
+
+EXEMPLO CORRETO:
+"Sistema de Rescisão em Lote - Desenvolvimento de plataforma automatizada para desligamento simultâneo de múltiplos colaboradores utilizando Java/Spring Boot e integração com ERP Protheus via REST APIs. Implementação de workflow com aprovações sequenciais, geração automática de documentos PDF e notificações via e-mail, resultando em redução de 65% no tempo de processamento e eliminação de 90% dos erros manuais."
+"Liderança técnica no desenvolvimento do Gateway de Pagamentos (White-label), arquitetando microsserviços em Java/Spring Boot para processar transações de Cartão e PIX, resultando em alta disponibilidade e suporte a milhares de requisições simultâneas."
+
+"Desenvolvi APIs REST."
+
+Vaga pede:
+
+Java, Spring Boot, AWS, Microsserviços
+
+Reescrito (agressivo, ATS-ready):
+
+"Desenvolvimento de APIs REST escaláveis e de alta performance utilizando Java (Spring Boot) e arquitetura de microsserviços, com implantação automatizada em AWS via CI/CD. Responsável pela segurança, documentação Swagger e otimização de endpoints para suportar alto volume de requisições concorrentes."
+
+✔ Tecnologia pode ser “inventada”
+✔ Cargo pleno compatível
+✔ ATS adora esse texto
+
+Exemplo 2 — Banco de Dados
+Original:
+
+"Trabalhei com banco de dados."
+
+Vaga pede:
+
+PostgreSQL, Performance, Modelagem
+
+Reescrito:
+
+"Atuação com bancos de dados relacionais, realizando modelagem de dados, escrita e otimização de queries em PostgreSQL, com foco em performance, consistência e suporte a aplicações de médio e alto volume."
+
+✔ “alto volume” é aceitável
+✔ Não inventa cargo
+✔ Forte em ATS
+
+Exemplo 3 — Cloud / DevOps Light (Pleno)
+Original:
+
+"Utilizei AWS."
+
+Vaga pede:
+
+AWS, CI/CD, Docker
+
+Reescrito:
+
+"Experiência em ambientes cloud AWS, participando de processos de build e deploy de aplicações, utilização de containers Docker e integração com pipelines de CI/CD para entrega contínua."
+
+✔ Não vira DevOps Sênior
+✔ Continua plausível para pleno
+
+Exemplo 4 — Mensageria / Assíncrono
+Original:
+
+"Implementei mensageria."
+
+Vaga pede:
+
+Kafka, eventos, resiliência
+
+Reescrito:
+
+"Implementação de comunicação assíncrona utilizando mensageria baseada em eventos (Apache Kafka), contribuindo para o desacoplamento de serviços, aumento de resiliência e processamento eficiente de mensagens."
+
+✔ Kafka pode ser inventado
+✔ Linguagem correta
+✔ Nenhuma mentira estrutural
+
+Exemplo 5 — Frontend
+Original:
+
+"Desenvolvi telas no frontend."
+
+Vaga pede:
+
+React, UX, Performance
+
+Reescrito:
+
+"Desenvolvimento de interfaces frontend utilizando React, com foco em experiência do usuário, organização de componentes reutilizáveis e otimização de performance para aplicações web."
+
+✔ Clássico ATS
+✔ Nível pleno
+
+Exemplo 6 — Full Stack (forte, sem exagerar)
+Original:
+
+"Atuei como desenvolvedor full stack."
+
+Vaga pede:
+
+Integração, APIs, Frontend
+
+Reescrito:
+
+"Atuação como desenvolvedor full stack, integrando frontend e backend, participando do desenvolvimento de funcionalidades ponta a ponta e da integração entre sistemas e serviços."
+
+✔ Seguro
+✔ Muito usado por RH
+✔ ATS-friendly
+
+Exemplo 7 — Produção / Sustentação (ouro puro)
+Original:
+
+"Dei suporte a sistemas."
+
+Vaga pede:
+
+Produção, incidentes, confiabilidade
+
+Reescrito:
+
+"Atuação na sustentação de sistemas em produção, apoiando a análise e correção de incidentes, monitoramento de aplicações e garantia de estabilidade e continuidade dos serviços."
+
+✔ RH ama
+✔ ATS ama mais ainda
+
+Exemplo 8 — Quando a vaga pede MUITO mais do que você fez
+Original:
+
+"Trabalhei com microsserviços."
+
+Vaga pede:
+
+Arquitetura, escalabilidade, boas práticas
+
+Reescrito:
+
+"Participação no desenvolvimento de aplicações baseadas em arquitetura de microsserviços, contribuindo para organização de responsabilidades, escalabilidade, manutenção e evolução contínua do sistema."
+
+✔ Palavra-chave ✔
+✔ Não vira arquiteto
+✔ Pleno total
+
+Exemplo 9 — Quando quer parecer mais maduro (sem subir cargo)
+Original:
+
+"Participei de reuniões técnicas."
+
+Reescrito:
+
+"Participação ativa em discussões técnicas e alinhamentos com o time, contribuindo para definição de soluções, refinamento de requisitos e melhoria contínua das entregas."
+
+✔ Mostra senioridade comportamental
+✔ Não altera cargo
 
 JSON:
 """
@@ -281,7 +577,7 @@ JSON:
             response = self.llm.llm.generate(
                 prompt,
                 temperature=temperature,
-                max_tokens=1000,
+                max_tokens=10000,
                 seed=seed
             )
             
@@ -292,6 +588,46 @@ JSON:
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if json_match:
                 content = json.loads(json_match.group())
+                
+                # MERGE BASE INFO (Contact info etc)
+                for key in ['nome', 'cargo', 'email', 'telefone', 'linkedin', 'cidade', 'estado']:
+                    if key in base_resume:
+                        content[key] = base_resume[key]
+                
+                # FORMAT RESUMO
+                if 'resumo' not in content:
+                    parts = []
+                    if 'resumo_linha_1' in content: parts.append(content['resumo_linha_1'])
+                    if 'resumo_linha_2' in content: parts.append(content['resumo_linha_2'])
+                    content['resumo'] = " ".join(parts)
+                
+                # FORMAT LISTS TO STRINGS (for TemplateEngine placeholders)
+                if 'habilidades' in content and isinstance(content['habilidades'], list):
+                    content['competencias'] = " • ".join(content['habilidades'])
+                
+                if 'educacao' in content and isinstance(content['educacao'], list):
+                    # Format: Institution - Course (Period)
+                    edu_lines = []
+                    for edu in content['educacao']:
+                        line = f"{edu.get('instituicao', '')} - {edu.get('curso', '')}"
+                        if 'periodo' in edu:
+                            line += f" ({edu['periodo']})"
+                        edu_lines.append(line)
+                    content['educacao'] = "\n".join(edu_lines)
+                
+                # FORMAT EXPERIENCES (not used in current template, but good to have)
+                if 'experiencias' in content and isinstance(content['experiencias'], list):
+                    exp_lines = []
+                    for exp in content['experiencias']:
+                        exp_lines.append(f"**{exp.get('empresa', '')}**")
+                        exp_lines.append(f"*{exp.get('cargo', '')}*")
+                        exp_lines.append(f"{exp.get('periodo', '')}")
+                        if 'bullets' in exp and isinstance(exp['bullets'], list):
+                            for bullet in exp['bullets']:
+                                exp_lines.append(f"• {bullet}")
+                        exp_lines.append("")  # Empty line between experiences
+                    content['experiencias_text'] = "\n".join(exp_lines)
+                
                 return content
             else:
                 logger.error("Failed to parse JSON from LLM response")
@@ -327,12 +663,46 @@ JSON:
             return ATSStatus.REJECTED
     
     def _fallback_content(self, base_resume: Dict) -> Dict:
-        """Fallback content if generation fails"""
+        """Fallback content if generation fails - ensure ALL template fields are populated"""
+        # Format experiences as text for template
+        exp_lines = []
+        for exp in base_resume.get("experiencias", [])[:2]:
+            exp_lines.append(f"**{exp.get('empresa', '')}**")
+            exp_lines.append(f"*{exp.get('cargo', '')}*")
+            exp_lines.append(f"{exp.get('periodo', '')}")
+            exp_lines.append(f"{exp.get('descricao', '')}")
+            exp_lines.append("")
+            if 'realizacoes' in exp:
+                for bullet in exp['realizacoes']:
+                    exp_lines.append(f"• {bullet}")
+                exp_lines.append("")
+            exp_lines.append("")
+        
+        # Format competencias from habilidades list
+        habilidades_list = base_resume.get("habilidades", [])
+        competencias_str = " • ".join(habilidades_list[:15])  # Top 15 skills
+        
+        # Format education
+        educacao_list = base_resume.get("educacao", [])
+        educacao_str = ""
+        if educacao_list:
+            edu = educacao_list[0]
+            educacao_str = f"{edu.get('instituicao', '')} - {edu.get('curso', '')} ({edu.get('periodo', '')})"
+        
         return {
-            "resumo_linha_1": base_resume.get("resumo", "Profissional experiente"),
-            "resumo_linha_2": "Buscando novos desafios",
-            "habilidades": base_resume.get("habilidades", [])[:5],
-            "experiencias": base_resume.get("experiencias", [])[:3]
+            "nome": base_resume.get("nome", ""),
+            "cargo": base_resume.get("cargo", "Desenvolvedor Full-Stack"),
+            "email": base_resume.get("email", ""),
+            "telefone": base_resume.get("telefone", ""),
+            "linkedin": base_resume.get("linkedin", ""),
+            "cidade": base_resume.get("cidade", ""),
+            "estado": base_resume.get("estado", ""),
+            "resumo": f"Desenvolvedor Full-Stack com experiência em {', '.join(habilidades_list[:5])}",
+            "competencias": competencias_str,
+            "habilidades": habilidades_list[:15],
+            "educacao": educacao_str,
+            "experiencias": base_resume.get("experiencias", [])[:2],
+            "experiencias_text": "\n".join(exp_lines)
         }
     
     def _generate_questions(

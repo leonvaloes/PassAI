@@ -12,5 +12,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onHotkey: (callback) => {
     ipcRenderer.on('hotkey', (event, action) => callback(action));
+  },
+  openExternal: (url) => {
+    ipcRenderer.send('open-external-url', url);
   }
 });

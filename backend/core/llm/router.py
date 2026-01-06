@@ -33,8 +33,8 @@ class LLMConfig:
     
     # Ollama
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3.1:8b"  # Modelo que você tem instalado
-    ollama_timeout: int = 30
+    ollama_model: str = "llama3.1-8b-ctx32k:latest"  # Modelo que você tem instalado
+    ollama_timeout: int = 90  # Increased from 30s for complex prompts
     
     # OpenAI
     openai_api_key: Optional[str] = None
@@ -107,6 +107,53 @@ class LLMRouter:
             f"LLM Router initialized (default: {self.config.default_provider.value})"
         )
     
+    
+    def generate(self, prompt: str, temperature: float = 0.7, max_tokens: int = 500, seed: int = None) -> str:
+        """
+        Gera resposta para um prompt raw.
+        Useful for non-chat tasks like JSON extraction.
+        """
+        # Default to Ollama for now as it's the primary local provider
+        if self.config.default_provider == LLMProvider.OLLAMA:
+            try:
+                response = requests.post(
+                    f"{self.config.ollama_base_url}/api/generate",
+                    json={
+                        "model": self.config.ollama_model,
+                        "prompt": prompt,
+                        "stream": False,
+                        "options": {
+                            "temperature": temperature,
+                            "num_predict": max_tokens,
+                            "seed": seed
+                        }
+                    },
+                    timeout=self.config.ollama_timeout
+                )
+                response.raise_for_status()
+                return response.json().get('response', '')
+            except Exception as e:
+                logger.error(f"Ollama generate failed: {e}")
+                # Fallback to OpenAI if configured
+                if self.config.openai_api_key:
+                     try:
+                        client = OpenAI(api_key=self.config.openai_api_key)
+                        response = client.chat.completions.create(
+                            model=self.config.openai_model,
+                            messages=[
+                                {"role": "system", "content": "You are a helpful assistant found outputting JSON."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            max_tokens=max_tokens,
+                            temperature=temperature
+                        )
+                        return response.choices[0].message.content
+                     except Exception as oe:
+                        logger.error(f"OpenAI fallback failed: {oe}")
+                raise e
+        
+        return ""
+
     def _init_clients(self):
         """Inicializa clients dos provedores."""
         # Ollama (sempre disponível - HTTP direto)

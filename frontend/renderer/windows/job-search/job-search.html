@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Search - PassAI</title>
+    <link rel="stylesheet" href="job-search.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div>
+                    <h1>🔍 Job Aggregator</h1>
+                    <p class="subtitle">Intelligent job search powered by AI</p>
+                </div>
+                <button class="btn btn-secondary" onclick="refreshJobs()">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Extract Job</h2>
+                <span class="badge">Step 1</span>
+            </div>
+
+            <div class="input-tabs">
+                <button class="tab active" data-tab="url">🔗 URL</button>
+                <button class="tab" data-tab="text">📝 Text</button>
+            </div>
+
+            <!-- URL Tab -->
+            <div class="tab-content active" id="tab-url">
+                <input 
+                    type="url" 
+                    id="job-url" 
+                    placeholder="https://linkedin.com/jobs/view/... or https://vaga.gupy.io/..."
+                    class="input-field"
+                />
+                <p class="hint">
+                    Supported: LinkedIn, Gupy
+                </p>
+            </div>
+
+            <!-- Text Tab -->
+            <div class="tab-content" id="tab-text">
+                <textarea 
+                    id="job-text" 
+                    placeholder="Paste job description here...
+
+Example:
+Backend Developer - Nubank
+São Paulo (Remote)
+5+ years Node.js, TypeScript, AWS..."
+                    rows="8"
+                ></textarea>
+            </div>
+
+            <button id="btn-extract" class="btn btn-primary" onclick="extractJob()">
+                ✨ Extract Job Data
+            </button>
+
+            <!-- Loading indicator -->
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Scraping job data...</p>
+            </div>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="section hidden" id="preview-section">
+            <div class="section-header">
+                <h2>Job Preview</h2>
+                <span class="badge success">Extracted</span>
+            </div>
+
+            <div class="job-card preview-card">
+                <div class="job-card-header">
+                    <h3 id="preview-title">-</h3>
+                    <span class="job-badge" id="preview-seniority">-</span>
+                </div>
+                
+                <div class="job-meta">
+                    <span id="preview-company">🏢 -</span>
+                    <span id="preview-location">📍 -</span>
+                </div>
+
+                <div class="job-tech-stack">
+                    <label>Tech Stack:</label>
+                    <div id="preview-stack"></div>
+                </div>
+
+                <div class="job-requirements">
+                    <div class="req-column">
+                        <label>Must Have:</label>
+                        <ul id="preview-must-have"></ul>
+                    </div>
+                    <div class="req-column">
+                        <label>Nice to Have:</label>
+                        <ul id="preview-nice-have"></ul>
+                    </div>
+                </div>
+
+                <div class="job-actions">
+                    <button class="btn btn-success" onclick="saveJob()">
+                        💾 Save Job
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetForm()">
+                        ↩️ Extract Another
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Saved Jobs Section -->
+        <div class="section" id="saved-section">
+            <div class="section-header">
+                <h2>Saved Jobs</h2>
+                <span class="badge" id="jobs-count">0 jobs</span>
+            </div>
+
+            <div class="filters">
+                <input 
+                    type="text" 
+                    id="search-filter" 
+                    placeholder="🔍 Search by title, company, or tech..."
+                    class="filter-input"
+                    onkeyup="filterJobs()"
+                />
+            </div>
+
+            <div id="jobs-list" class="jobs-list">
+                <div class="empty-state">
+                    <p>📭 No jobs yet</p>
+                    <p class="hint">Extract a job from URL or text to get started</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="job-search.js"></script>
+</body>
+</html>

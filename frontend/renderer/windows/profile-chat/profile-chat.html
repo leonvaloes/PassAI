@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Perfil - PassAI</title>
+    <link rel="stylesheet" href="profile-chat.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>💬 Configurar Perfil Profissional</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+                <span class="progress-text" id="progressText">0%</span>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                <p>👋 Bem-vindo! Estou aqui para ajudar você a criar seu perfil profissional.</p>
+                <p>Clique em "Iniciar" para começar!</p>
+            </div>
+        </div>
+        
+        <div class="chat-input-area">
+            <input 
+                type="text" 
+                id="userInput" 
+                placeholder="Digite sua resposta..." 
+                disabled
+            >
+            <button id="sendBtn" onclick="sendMessage()" disabled>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="chat-actions">
+            <button id="startBtn" onclick="startConversation()" class="btn-start">
+                🚀 Iniciar Conversa
+            </button>
+        </div>
+    </div>
+    
+    <script src="profile-chat.js"></script>
+</body>
+</html>

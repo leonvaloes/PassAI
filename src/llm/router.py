@@ -33,7 +33,7 @@ class LLMConfig:
     
     # Ollama
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3.1:8b"  # Modelo que você tem instalado
+    ollama_model: str = "llama3.1-8b-ctx32k:latest"  # Modelo que você tem instalado
     ollama_timeout: int = 30
     
     # OpenAI

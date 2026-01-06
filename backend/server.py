@@ -40,6 +40,19 @@ app.add_middleware(
 from api.resume import router as resume_router, init_resume_system
 app.include_router(resume_router)
 
+# Import and include Profile API routes
+from api.profile import router as profile_router, init_profile_system
+app.include_router(profile_router)
+
+# Import and include Jobs API routes
+# IMPORTANT: Register search_router FIRST to avoid path conflicts
+# (search_router has /profiles, jobs_router has /{job_id} which would catch it)
+from api.jobs import router as jobs_router, init_jobs_system, search_router, init_search_system
+app.include_router(search_router)  # Register specific routes first
+app.include_router(jobs_router)    # Register generic routes second
+
+
+
 
 from core.ai.vision_processor import VisionProcessor
 
@@ -416,52 +429,50 @@ async def get_audio_devices():
     """Get list of available audio devices (input, output, and loopback)"""
     try:
         import sounddevice as sd
-        import pyaudiowpatch as pyaudio
         
+        logger.info("Querying audio devices...")
         devices = sd.query_devices()
+        logger.info(f"sounddevice found {len(devices) if devices is not None else 0} devices")
         
         audio_inputs = []
         audio_outputs = []
         loopback_devices = []
         
         # Get regular devices from sounddevice
-        for i, device in enumerate(devices):
-            device_info = {
-                'index': i,
-                'name': device['name'],
-                'channels': device['max_input_channels'] or device['max_output_channels'],
-                'sample_rate': device['default_samplerate']
-            }
-            
-            if device['max_input_channels'] > 0:
-                audio_inputs.append(device_info)
-            
-            if device['max_output_channels'] > 0:
-                audio_outputs.append(device_info)
-        
-        # Get ALL loopback devices specifically
-        try:
-            p = pyaudio.PyAudio()
-            for loopback in p.get_loopback_device_info_generator():
-                loopback_info = {
-                    'index': loopback['index'],
-                    'name': loopback['name'],
-                    'channels': loopback['maxInputChannels'],
-                    'sample_rate': loopback['defaultSampleRate'],
-                    'isLoopback': True
+        if devices is not None:
+            for i, device in enumerate(devices):
+                logger.debug(f"Device {i}: {device['name']} - In:{device['max_input_channels']} Out:{device['max_output_channels']}")
+                device_info = {
+                    'index': i,
+                    'name': device['name'],
+                    'channels': device['max_input_channels'] or device['max_output_channels'],
+                    'sample_rate': device['default_samplerate']
                 }
-                loopback_devices.append(loopback_info)
-            p.terminate()
-        except Exception as e:
-            logger.error(f"Failed to enumerate loopback devices: {e}")
+                
+                if device['max_input_channels'] > 0:
+                    audio_inputs.append(device_info)
+                
+                if device['max_output_channels'] > 0:
+                    audio_outputs.append(device_info)
+                
+                # Check if it's a loopback device (usually has "Stereo Mix" or "What U Hear" in name)
+                name_lower = device['name'].lower()
+                if any(keyword in name_lower for keyword in ['stereo mix', 'what u hear', 'wave out', 'loopback']):
+                    loopback_info = device_info.copy()
+                    loopback_info['isLoopback'] = True
+                    loopback_devices.append(loopback_info)
+        
+        logger.info(f"Found {len(audio_inputs)} inputs, {len(audio_outputs)} outputs, {len(loopback_devices)} loopbacks")
         
         return {
             'inputs': audio_inputs,
             'outputs': audio_outputs,
-            'loopbacks': loopback_devices  # NEW: separate list of loopback devices
+            'loopbacks': loopback_devices
         }
     except Exception as e:
         logger.error(f"Failed to get audio devices: {e}")
+        import traceback
+        traceback.print_exc()
         return {'inputs': [], 'outputs': [], 'loopbacks': []}
 
 
@@ -718,5 +729,26 @@ if __name__ == "__main__":
         logger.info("✅ Resume Generator API initialized")
     except Exception as e:
         logger.warning(f"⚠️ Resume Generator initialization failed: {e}")
+    
+    # Initialize Profile Chat system
+    try:
+        init_profile_system()
+        logger.info("✅ Profile Chat API initialized")
+    except Exception as e:
+        logger.warning(f"⚠️ Profile Chat initialization failed: {e}")
+    
+    # Initialize Job Aggregator system
+    try:
+        init_jobs_system()
+        logger.info("✅ Job Aggregator API initialized")
+    except Exception as e:
+        logger.warning(f"⚠️ Job Aggregator initialization failed: {e}")
+    
+    # Initialize Search Profiles system
+    try:
+        init_search_system()
+        logger.info("✅ Search Profiles API initialized")
+    except Exception as e:
+        logger.warning(f"⚠️ Search Profiles initialization failed: {e}")
     
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

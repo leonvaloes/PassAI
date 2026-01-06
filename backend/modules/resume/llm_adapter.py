@@ -27,7 +27,7 @@ class LLMAdapter:
         self,
         prompt: str,
         temperature: float = 0.7,
-        max_tokens: int = 1000,
+        max_tokens: int = 20000,  # Increased to 20K for very detailed resumes
         seed: int = None
     ) -> str:
         """

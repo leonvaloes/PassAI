@@ -201,7 +201,7 @@ class AICopilotApp:
         # LLM Router
         llm_config = LLMConfig(
             default_provider=LLMProvider.OLLAMA,
-            ollama_model=self.config.get('llm', {}).get('model', 'llama3.1:8b')
+            ollama_model=self.config.get('llm', {}).get('model', 'llama3.1-8b-ctx32k:latest')
         )
         self.llm_router = LLMRouter(config=llm_config)
         logger.info("  ✅ LLM Router")

@@ -2,10 +2,10 @@
 
 resume:
   # Generation parameters
-  max_variants: 30
-  max_rounds: 10
+  max_variants: 5
+  max_rounds: 2
   batch_size: 5
-  no_improve_rounds: 3  # Stop after N rounds without improvement
+  no_improve_rounds: 1  # Stop after N rounds without improvement
   
   # Scoring thresholds
   approval_threshold: 95.0  # Min score for APPROVED status

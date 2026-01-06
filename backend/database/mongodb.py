@@ -106,24 +106,56 @@ class MongoDB:
         result = self.variants.insert_one(variant)
         return result.inserted_id
     
-    def get_job(self, job_id: ObjectId) -> Optional[Dict]:
+    def get_job(self, job_id: Any) -> Optional[Dict]:
         """Get job by ID"""
-        return self.jobs.find_one({"_id": job_id})
+        logger.info(f"MongoDB get_job called with: {job_id} (type: {type(job_id)})")
+        if isinstance(job_id, str):
+            try:
+                job_id = ObjectId(job_id)
+            except Exception as e:
+                logger.error(f"ObjectId conversion failed for {job_id}: {e}")
+                return None
+        
+        result = self.jobs.find_one({"_id": job_id})
+        logger.info(f"MongoDB get_job result for {job_id}: {'Found' if result else 'None'}")
+        return result
     
-    def get_variants_by_job(self, job_id: ObjectId) -> List[Dict]:
+    def get_variants_by_job(self, job_id: Any) -> List[Dict]:
         """Get all variants for a job"""
+        if isinstance(job_id, str):
+            try:
+                job_id = ObjectId(job_id)
+            except:
+                return []
         return list(self.variants.find({"job_id": job_id}).sort("ranking_score", -1))
     
-    def get_top_variants(self, job_id: ObjectId, limit: int = 3) -> List[Dict]:
+    def get_top_variants(self, job_id: Any, limit: int = 3) -> List[Dict]:
         """Get top N variants by ranking score"""
+        if isinstance(job_id, str):
+            try:
+                job_id = ObjectId(job_id)
+            except:
+                return []
         return list(
             self.variants.find({"job_id": job_id, "ats_status": "APPROVED"})
             .sort("ranking_score", -1)
             .limit(limit)
         )
     
-    def record_decision(self, variant_id: ObjectId, action: str, feedback: Optional[str] = None):
+    def get_variant(self, variant_id: Any) -> Optional[Dict]:
+        """Get variant by ID"""
+        if isinstance(variant_id, str):
+            try:
+                variant_id = ObjectId(variant_id)
+            except:
+                return None
+        return self.variants.find_one({"_id": variant_id})
+
+    def record_decision(self, variant_id: Any, action: str, feedback: Optional[str] = None):
         """Record user decision"""
+        if isinstance(variant_id, str):
+            variant_id = ObjectId(variant_id)
+            
         self.decisions.insert_one({
             "variant_id": variant_id,
             "action": action,

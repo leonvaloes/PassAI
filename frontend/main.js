@@ -1,8 +1,10 @@
-const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, shell } = require('electron');
 const path = require('path');
 
 let mainWindow;
 let resumeWindow = null; // Resume Generator window
+let jobsWindow = null; // Jobs window
+let searchProfilesWindow = null; // Search Profiles window
 
 function createWindow() {
   const { screen } = require('electron');
@@ -45,6 +47,11 @@ function createWindow() {
       mainWindow.setOpacity(opacity);
     }
   });
+  
+  // Handle opening external URLs in system browser
+  ipcMain.on('open-external-url', (event, url) => {
+    shell.openExternal(url);
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -78,10 +85,73 @@ function createResumeWindow() {
   });
 }
 
+// Jobs window
+function createJobsWindow() {
+  if (jobsWindow) {
+    jobsWindow.focus();
+    return;
+  }
+
+  jobsWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    title: 'Jobs - PassAI',
+    backgroundColor: '#1a1a2e'
+  });
+
+  jobsWindow.loadFile('renderer/windows/jobs/jobs.html');
+
+  jobsWindow.on('closed', () => {
+    jobsWindow = null;
+  });
+}
+
+// Search Profiles window
+function createSearchProfilesWindow() {
+  if (searchProfilesWindow) {
+    searchProfilesWindow.focus();
+    return;
+  }
+
+  searchProfilesWindow = new BrowserWindow({
+    width: 1000,
+    height: 700,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    title: 'Search Profiles - PassAI',
+    backgroundColor: '#1a1a2e'
+  });
+
+  searchProfilesWindow.loadFile('renderer/windows/search-profiles/search-profiles.html');
+
+  searchProfilesWindow.on('closed', () => {
+    searchProfilesWindow = null;
+  });
+}
+
 // IPC Handler for opening Resume Generator
 ipcMain.on('open-resume-generator', () => {
   createResumeWindow();
 });
+
+// IPC Handler for opening Jobs window
+ipcMain.on('open-jobs', () => {
+  createJobsWindow();
+});
+
+// IPC Handler for opening Search Profiles window
+ipcMain.on('open-search-profiles', () => {
+  createSearchProfilesWindow();
+});
+
 
 app.on('ready', () => {
   createWindow();
