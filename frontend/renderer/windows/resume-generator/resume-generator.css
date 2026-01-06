@@ -25,6 +25,18 @@ body {
     margin-bottom: 40px;
 }
 
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-content > div:first-child {
+    flex: 1;
+    text-align: left;
+}
+
 .header h1 {
     font-size: 2.5rem;
     background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
@@ -36,6 +48,24 @@ body {
 .subtitle {
     color: #9ca3af;
     font-size: 1rem;
+}
+
+.btn-secondary {
+    padding: 12px 24px;
+    background: rgba(168, 85, 247, 0.2);
+    border: 1px solid #a855f7;
+    border-radius: 8px;
+    color: #a855f7;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-secondary:hover {
+    background: rgba(168, 85, 247, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
 }
 
 /* Sections */
@@ -321,17 +351,14 @@ textarea:focus, .input-field:focus {
 }
 
 .tag.approved {
-    background: rgba(16, 185, 129, 0.2);
     color: #10b981;
 }
 
 .tag.risk {
-    background: rgba(245, 158, 11, 0.2);
     color: #f59e0b;
 }
 
 .tag.rejected {
-    background: rgba(239, 68, 68, 0.2);
     color: #ef4444;
 }
 

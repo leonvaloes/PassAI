@@ -7,6 +7,7 @@ from typing import List, Optional
 import asyncio
 import logging
 from datetime import datetime
+from bson import ObjectId
 
 from .schemas import (
     JobCreateRequest,
@@ -47,8 +48,25 @@ def init_resume_system():
     """Initialize resume system components"""
     global job_extractor, variant_generator, ranker, template_engine, learning_engine, db
     
-    # Load config
-    with open('backend/config/resume_config.yaml', 'r', encoding='utf-8') as f:
+    # Load config (robust path)
+    import os
+    # Get absolute path to backend directory (d:\p2\ai-copilot\backend)
+    current_file = os.path.abspath(__file__)
+    api_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file))) # backend/api/resume -> backend
+    config_path = os.path.join(api_dir, 'config', 'resume_config.yaml')
+    
+    logger.info(f"Loading resume config from: {config_path}")
+    
+    if not os.path.exists(config_path):
+        logger.error(f"Config NOT found at: {config_path}")
+        # Final fallback - assume CWD
+        config_path = os.path.abspath('backend/config/resume_config.yaml')
+        logger.info(f"Fallback config path: {config_path}")
+    
+    if not os.path.exists(config_path):
+        raise FileNotFoundError(f"Resume config not found at {config_path}")
+        
+    with open(config_path, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)['resume']
     
     # Initialize components
@@ -72,16 +90,39 @@ def init_resume_system():
     )
     
     ranker = Ranker(config)
-    template_engine = TemplateEngine(config['template_path'])
+    
+    # Resolve template path to absolute
+    template_path = config['template_path']
+    if not os.path.isabs(template_path):
+        # __file__ is backend/api/resume/routes.py
+        # Go up 3 levels: routes.py -> resume -> api -> backend -> project_root
+        backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        project_root = os.path.dirname(backend_dir)  # One more level up from backend/
+        template_path = os.path.join(project_root, template_path)
+    
+    logger.info(f"Resolved template path: {template_path}")
+    
+    if not os.path.exists(template_path):
+        logger.error(f"Template file not found at: {template_path}")
+        raise FileNotFoundError(f"Template not found: {template_path}")
+    
+    template_engine = TemplateEngine(template_path)
     learning_engine = LearningEngine(ranker)
     
-    logger.info("✅ Resume system initialized")
+    logger.info(f"✅ Resume system initialized. JobExtractor ID: {id(job_extractor)}")
 
 
 @router.post("/jobs", response_model=JobResponse)
 async def create_job(request: JobCreateRequest):
     """Create a new job from user input"""
+    logger.info(f"create_job called. input_type={request.input_type}")
+    logger.info(f"Global job_extractor ID: {id(job_extractor) if job_extractor else 'None'}")
+    
     try:
+        if job_extractor is None:
+            logger.error("job_extractor is None!")
+            raise HTTPException(status_code=503, detail="Resume system not initialized")
+
         # Extract job data
         job = job_extractor.extract({
             "type": request.input_type,
@@ -90,6 +131,12 @@ async def create_job(request: JobCreateRequest):
         
         # Save to MongoDB
         job_id = db.insert_job(job.dict(by_alias=True, exclude={'id'}))
+        logger.info(f"Job inserted. ID: {job_id} (type: {type(job_id)})")
+        
+        # Verify immediately
+        verify = db.get_job(job_id)
+        logger.info(f"Immediate verification: {'Found' if verify else 'NOT FOUND'}")
+        
         job.id = job_id
         
         return JobResponse(
@@ -104,7 +151,7 @@ async def create_job(request: JobCreateRequest):
         )
     
     except Exception as e:
-        logger.error(f"Job extraction failed: {e}")
+        logger.error(f"Job extraction failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -140,14 +187,111 @@ async def delete_job(job_id: str):
 @router.post("/jobs/{job_id}/generate")
 async def start_generation(job_id: str, request: GenerateRequest):
     """Start variant generation (returns immediately, sends updates via WebSocket)"""
+    logger.info(f"start_generation called for job_id: '{job_id}' (len={len(job_id)})")
+    
     try:
+        if db is None:
+            logger.error("CRITICAL: db instance is None in start_generation!")
+            raise HTTPException(status_code=500, detail="Database not initialized")
+
+        # Debug existence
+        count = db.jobs.count_documents({"_id": ObjectId(job_id)}) if len(job_id) == 24 else -1
+        logger.info(f"Direct count for ID {job_id}: {count}")
+
         # Get job
         job_data = db.get_job(job_id)
+        logger.info(f"db.get_job retrieved: {type(job_data)} - {job_data.keys() if job_data else 'None'}")
+        
         if not job_data:
+            # Fallback: Check if it exists in job_postings (from Scraper)
+            try:
+                job_data = db.db.job_postings.find_one({"_id": ObjectId(job_id)})
+                if job_data:
+                    logger.info(f"Job found in job_postings (Scraper DB). Adapting to Resume format...")
+                    
+                    # Adapt JobPosting to Job format
+                    adapted_job = {
+                        "_id": job_data["_id"],
+                        "source": "url",
+                        "url": job_data.get("url"),
+                        "raw_content": job_data.get("description") or job_data.get("rawText") or "",
+                        "cargo": job_data.get("title", "Unknown Role"),
+                        "empresa": job_data.get("company", "Unknown Company"),
+                        "local": job_data.get("location", {}).get("city", "") if isinstance(job_data.get("location"), dict) else str(job_data.get("location", "")),
+                        "modalidade": "remoto" if job_data.get("location", {}).get("remote") else "presencial",
+                        "senioridade": job_data.get("seniority"),
+                        "salario": str(job_data.get("salaryExplicit", "")) if job_data.get("salaryExplicit") else None,
+                        "requisitos_tecnicos": job_data.get("techKeywords", []) + job_data.get("mustHave", []),
+                        "requisitos_comportamentais": job_data.get("niceToHave", []),
+                        "ats_detectado": "unknown",
+                        "status": "CREATED"
+                    }
+                    job_data = adapted_job
+                    
+            except Exception as e:
+                logger.error(f"Failed to check job_postings fallback: {e}")
+
+        if not job_data:
+            logger.error(f"Job not found for ID: {job_id}")
             raise HTTPException(status_code=404, detail="Job not found")
+            
+        # Validate/Enrich Data if missing requirements
+        reqs = job_data.get('requisitos_tecnicos', [])
+        if not reqs:
+            logger.warning(f"Job {job_id} has NO requirements. Triggering On-Demand Enrichment...")
+            
+            # Use AI Enricher from jobs module
+            from modules.jobs.enricher import enrich_job_with_ai
+            from core.llm.router import LLMRouter
+            
+            # Prepare data for enricher
+            enrich_payload = {
+                'rawText': job_data.get('raw_content') or job_data.get('description', ''),
+                'description': job_data.get('raw_content') or job_data.get('description', '')
+            }
+            
+            # Enrich
+            llm_router_instance = LLMRouter() # Create fresh instance
+            enriched = enrich_job_with_ai(enrich_payload, llm_router_instance)
+            
+            # Update job_data
+            job_data['requisitos_tecnicos'] = enriched.get('techKeywords', []) + enriched.get('mustHave', [])
+            job_data['requisitos_comportamentais'] = enriched.get('niceToHave', [])
+            
+            # Update seniority if missing
+            if not job_data.get('senioridade'):
+                job_data['senioridade'] = enriched.get('seniority')
+                
+            logger.info(f"✅ On-Demand Enrichment result: {len(job_data['requisitos_tecnicos'])} reqs found")
+
+        # Load user profile from MongoDB
+        user_profile = db.db.user_profiles.find_one({"profile_name": "Leonardo"})
+        
+        if not user_profile:
+            logger.error("❌ User profile not found in database!")
+            raise HTTPException(
+                status_code=400, 
+                detail="User profile not found. Run: python backend/scripts/populate_leonardo_profile.py"
+            )
+        
+        logger.info(f"✅ Loaded profile: {user_profile['nome']} ({len(user_profile['experiencias'])} experiences, {len(user_profile['habilidades'])} skills)")
+        
+        # Build base_resume from profile
+        base_resume = {
+            'nome': user_profile['nome'],
+            'cargo': user_profile.get('cargo_atual', 'Desenvolvedor Full-Stack'),
+            'email': user_profile['email'],
+            'telefone': user_profile['telefone'],
+            'linkedin': user_profile['linkedin'],
+            'cidade': user_profile['cidade'],
+            'estado': user_profile['estado'],
+            'experiencias': user_profile['experiencias'],  # ALL experiences for AI to choose
+            'educacao': user_profile['educacao'],
+            'habilidades': user_profile['habilidades']
+        }
         
         # Start generation in background
-        asyncio.create_task(generate_variants_task(job_id, job_data, request.base_resume))
+        asyncio.create_task(generate_variants_task(job_id, job_data, base_resume))
         
         return {"message": "Generation started", "job_id": job_id}
     
@@ -164,30 +308,43 @@ async def generate_variants_task(job_id: str, job_data: dict, base_resume: dict)
         from database.models import Job
         job = Job(**job_data)
         
-        # Progress callback
-        def progress_callback(round_num, variants, approved):
-            # Send WebSocket update
-            if job_id in active_connections:
-                asyncio.create_task(
-                    active_connections[job_id].send_json({
-                        "type": "progress",
-                        "round": round_num,
-                        "variants_total": len(variants),
-                        "variants_approved": approved,
-                        "best_score": max([v.ats_score for v in variants]) if variants else 0
-                    })
-                )
+        # Progress callback (must be thread-safe or schedule on loop)
+        loop = asyncio.get_running_loop()
         
-        # Generate variants
-        variants = variant_generator.generate_variants(
-            job=job,
-            base_resume=base_resume,
-            template_path=template_engine.template_path,
-            callback=progress_callback
+        def progress_callback(round_num, variants, approved):
+            # Schedule WS update on the main loop
+            # Schedule WS update on the main loop
+            if job_id in active_connections:
+                try:
+                    future = asyncio.run_coroutine_threadsafe(
+                        active_connections[job_id].send_json({
+                            "type": "progress",
+                            "round": round_num,
+                            "variants_total": len(variants),
+                            "variants_approved": approved,
+                            "best_score": max([v.ats_score for v in variants]) if variants else 0
+                        }),
+                        loop
+                    )
+                except Exception as ex:
+                    logger.error(f"Failed to schedule WS update: {ex}")
+        
+        # Run blocking generation in thread pool
+        variants = await loop.run_in_executor(
+            None,
+            lambda: variant_generator.generate_variants(
+                job=job,
+                base_resume=base_resume,
+                template_path=template_engine.template_path,
+                callback=progress_callback
+            )
         )
         
-        # Rank variants
-        ranked = ranker.rank(variants, job)
+        # Rank variants (also blocking, so offload)
+        ranked = await loop.run_in_executor(
+            None,
+            lambda: ranker.rank(variants, job)
+        )
         
         # Send completion
         if job_id in active_connections:
@@ -198,7 +355,7 @@ async def generate_variants_task(job_id: str, job_data: dict, base_resume: dict)
             })
     
     except Exception as e:
-        logger.error(f"Generation task failed: {e}")
+        logger.error(f"Generation task failed: {e}", exc_info=True)
         if job_id in active_connections:
             await active_connections[job_id].send_json({
                 "type": "error",
@@ -210,11 +367,151 @@ async def generate_variants_task(job_id: str, job_data: dict, base_resume: dict)
 async def list_variants(job_id: str):
     """List all variants for a job"""
     try:
-        variants = db.list_variants(job_id)
-        return [VariantResponse(**v) for v in variants]
+        variants = db.get_variants_by_job(job_id)
+        # Fix IDs for Pydantic
+        results = []
+        for v in variants:
+            v['id'] = str(v.pop('_id')) if '_id' in v else v.get('id')
+            v['job_id'] = str(v['job_id'])
+            
+            # Handle datetime serialization
+            if 'created_at' in v and hasattr(v['created_at'], 'isoformat'):
+                v['created_at'] = v['created_at'].isoformat()
+            
+            # Handle Enums just in case
+            if 'ats_status' in v and hasattr(v['ats_status'], 'value'):
+                v['ats_status'] = v['ats_status'].value
+                
+            results.append(v)
+            
+        return [VariantResponse(**v) for v in results]
     
     except Exception as e:
         logger.error(f"Failed to list variants: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/jobs/{job_id}/generate-more")
+async def generate_more_variants(job_id: str, count: int = 3):
+    """
+    Generate additional variants for an existing job (incremental)
+    Does NOT delete existing variants - appends new ones
+    Limit: 1-10 variants per request
+    """
+    try:
+        # Validate count
+        if count < 1 or count > 10:
+            raise HTTPException(
+                status_code=400,
+                detail="Count must be between 1 and 10"
+            )
+        
+        if not variant_generator or not db:
+            raise HTTPException(status_code=503, detail="System not initialized")
+        
+        # Check if LLM is available
+        if not variant_generator.llm or not hasattr(variant_generator.llm, 'llm'):
+            raise HTTPException(
+                status_code=503, 
+                detail="LLM service not available. Please ensure Ollama is running."
+            )
+        
+        # Verify job exists
+        try:
+            job_dict = db.get_job(job_id)
+        except Exception as e:
+            logger.error(f"Failed to fetch job {job_id}: {e}")
+            raise HTTPException(status_code=404, detail=f"Job not found: {str(e)}")
+        
+        if not job_dict:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        # Convert dict to Job model (from database.models, not jobs.models)
+        from database.models import Job
+        job = Job(**job_dict)
+        
+        logger.info(f"Starting incremental generation: +{count} variants for job {job_id}")
+        
+        # Load user profile from MongoDB
+        user_profile = db.db.user_profiles.find_one({"profile_name": "Leonardo"})
+        
+        if not user_profile:
+            raise HTTPException(
+                status_code=400,
+                detail="User profile 'Leonardo' not found. Please create a profile first."
+            )
+        
+        # Build base_resume from profile
+        base_resume = {
+            'nome': user_profile['nome'],
+            'cargo': user_profile.get('cargo_atual', 'Desenvolvedor Full-Stack'),
+            'email': user_profile['email'],
+            'telefone': user_profile['telefone'],
+            'linkedin': user_profile['linkedin'],
+            'cidade': user_profile['cidade'],
+            'estado': user_profile['estado'],
+            'experiencias': user_profile['experiencias'],
+            'educacao': user_profile['educacao'],
+            'habilidades': user_profile['habilidades']
+        }
+        
+        # Generate exactly N variants using the internal batch method
+        try:
+            generated = []
+            
+            # Temporarily override batch_size to generate exactly what user wants
+            original_batch_size = variant_generator.batch_size
+            variant_generator.batch_size = count
+            
+            try:
+                batch = variant_generator._generate_batch(
+                    job=job,
+                    base_resume=base_resume,
+                    round_num=1
+                )
+                
+                # Score and save each variant
+                for variant in batch:
+                    score = variant_generator.ats_sim.score(variant, job)
+                    variant.ats_score = score
+                    variant.ats_status = variant_generator._classify_status(score)
+                    
+                    # Save to MongoDB
+                    variant_id = db.insert_variant(variant.dict(by_alias=True, exclude={'id'}))
+                    variant.id = variant_id
+                    
+                    generated.append(variant)
+                    logger.info(f"Generated variant {len(generated)}/{count}: Score {score:.1f}")
+                    
+            finally:
+                # Restore original batch_size
+                variant_generator.batch_size = original_batch_size
+                    
+        except Exception as e:
+            logger.error(f"Variant generation failed: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to generate variants: {str(e)}. Is Ollama running?"
+            )
+        
+        logger.info(f"Incremental generation complete: +{len(generated)} new variants")
+        
+        # Count total variants for this job
+        total = db.db.resume_variants.count_documents({"job_id": ObjectId(job_id)})
+        
+        return {
+            "message": f"Generated {len(generated)} additional variants",
+            "new_variants": len(generated),
+            "total_variants": total,
+            "job_id": job_id
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to generate more variants: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -225,6 +522,9 @@ async def get_variant(variant_id: str):
         variant = db.get_variant(variant_id)
         if not variant:
             raise HTTPException(status_code=404, detail="Variant not found")
+        
+        variant['id'] = str(variant.pop('_id')) if '_id' in variant else variant.get('id')
+        variant['job_id'] = str(variant['job_id'])
         
         return VariantResponse(**variant)
     
@@ -266,11 +566,61 @@ async def download_variant(variant_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/history")
+async def get_resume_history():
+    """
+    Get ALL ranked jobs with their CV generation status
+    Returns: all jobs from 'jobs' collection with variant counts
+    """
+    try:
+        # Get all jobs from the jobs collection (ranked jobs)
+        jobs_cursor = db.db.jobs.find().sort("createdAt", -1)
+        
+        history = []
+        for job in jobs_cursor:
+            job_id = job["_id"]
+            
+            # Count variants for this job
+            variant_count = db.db.resume_variants.count_documents({"job_id": job_id})
+            
+            # Get best score if variants exist
+            best_score = 0
+            if variant_count > 0:
+                best_variant = db.db.resume_variants.find_one(
+                    {"job_id": job_id},
+                    sort=[("ats_score", -1)]
+                )
+                best_score = best_variant.get("ats_score", 0) if best_variant else 0
+            
+            history.append({
+                "job_id": str(job_id),
+                "job_title": job.get("cargo") or job.get("title") or "Unknown",
+                "company": job.get("empresa") or job.get("company") or "Unknown",
+                "created_at": job.get("createdAt").isoformat() if job.get("createdAt") else None,
+                "variants_count": variant_count,
+                "best_score": round(best_score, 1) if best_score else 0,
+                "status": "completed" if variant_count > 0 else "no_cvs",
+                "has_cvs": variant_count > 0
+            })
+        
+        return history
+    
+    except Exception as e:
+        logger.error(f"Failed to fetch resume history: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# WebSocket endpoint for real-time updates
 @router.websocket("/ws/{job_id}")
 async def websocket_endpoint(websocket: WebSocket, job_id: str):
     """WebSocket for real-time generation updates"""
+    logger.info(f"Checking WS connection for job_id: {job_id}")
     await websocket.accept()
     active_connections[job_id] = websocket
+    logger.info(f"WS Connected. active_connections keys: {list(active_connections.keys())}")
+    
+    # Send test message
+    await websocket.send_json({"type": "info", "message": "Connected to Resume Generator"})
     
     try:
         while True:
@@ -280,6 +630,10 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: {job_id}")
     
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+    
     finally:
         if job_id in active_connections:
             del active_connections[job_id]
+        logger.info(f"WS Cleaned up for {job_id}")
