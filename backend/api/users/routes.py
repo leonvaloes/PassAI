@@ -283,7 +283,7 @@ JSON OUTPUT:"""
             max_tokens=2000  # Enough for detailed extractions
         )
         
-        logger.info(f"🤖 LLM response: {llm_response[:200]}...")
+        logger.info(f"🤖 LLM raw response ({len(llm_response)} chars): {llm_response[:500]}...")
         
         # Clean response (sometimes LLM adds markdown)
         cleaned_response = llm_response.strip()
@@ -295,8 +295,23 @@ JSON OUTPUT:"""
             cleaned_response = cleaned_response[:-3]
         cleaned_response = cleaned_response.strip()
         
+        logger.info(f"🧹 Cleaned response: {cleaned_response[:300]}...")
+        
         # Parse JSON
-        extracted_data = json.loads(cleaned_response)
+        try:
+            extracted_data = json.loads(cleaned_response)
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ JSON parse failed: {e}")
+            logger.error(f"Raw response was: {llm_response}")
+            raise HTTPException(
+                500,
+                f"IA não retornou JSON válido. Tente reformular o texto ou use um formato mais simples."
+            )
+        
+        # Validate it's a dict
+        if not isinstance(extracted_data, dict):
+            logger.error(f"❌ Expected dict, got {type(extracted_data)}: {extracted_data}")
+            raise HTTPException(500, "IA retornou formato inválido")
         
         # Validate and convert to schema objects
         experiencias = [Experience(**exp) for exp in extracted_data.get("experiencias", [])]
