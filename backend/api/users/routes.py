@@ -279,8 +279,8 @@ JSON OUTPUT:"""
         # Call LLM (using local Llama to avoid API costs)
         llm_response = await llm_router.generate(
             prompt=prompt,
-            model="llama3.1:8b",  # Use local Llama (no cost!)
-            temperature=0.3  # Low temperature for structured output
+            temperature=0.3,  # Low temperature for structured output
+            max_tokens=2000  # Enough for detailed extractions
         )
         
         logger.info(f"🤖 LLM response: {llm_response[:200]}...")
