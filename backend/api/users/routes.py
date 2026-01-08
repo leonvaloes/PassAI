@@ -276,12 +276,16 @@ TEXT TO PARSE:
 JSON OUTPUT:"""
 
     try:
-        # Call LLM (using local Llama to avoid API costs)
-        llm_response = await llm_router.generate(
+        # Call LLM (using configured model - Ollama or OpenAI)
+        llm_response = llm_router.generate(  # NOT async, don't use await
             prompt=prompt,
             temperature=0.3,  # Low temperature for structured output
             max_tokens=2000  # Enough for detailed extractions
         )
+        
+        if not llm_response or not isinstance(llm_response, str):
+            logger.error(f"❌ Invalid LLM response type: {type(llm_response)}")
+            raise HTTPException(500, "IA não retornou resposta válida")
         
         logger.info(f"🤖 LLM raw response ({len(llm_response)} chars): {llm_response[:500]}...")
         
