@@ -320,6 +320,12 @@ class ScrapeJobRequest(BaseModel):
     sourceHint: Optional[str] = None  # Manual hint: "linkedin", "gupy"
 
 
+class GenericJobRequest(BaseModel):
+    """Request validation for generic job extraction"""
+    input_type: str  # "text" | "url"
+    content: str
+
+
 class JobResponse(BaseModel):
     """API response for job"""
     id: str

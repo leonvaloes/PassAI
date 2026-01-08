@@ -12,6 +12,10 @@ function openSearchProfiles() {
   window.electronAPI.send('open-search-profiles');
 }
 
+function openJobSearch() {
+  window.electronAPI.send('open-job-search');
+}
+
 
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');

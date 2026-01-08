@@ -15,7 +15,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.electronAPI) {
         // Future: handle 'select-job' IPC message
     }
+    
+    // Setup Filter
+    const searchInput = document.getElementById('job-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => filterJobs(e.target.value));
+    }
 });
+
+// Filter Function
+function filterJobs(query) {
+    if (!query) {
+        displayJobList(jobHistory);
+        return;
+    }
+    
+    const lowerQuery = query.toLowerCase();
+    const filtered = jobHistory.filter(job => {
+        const title = (job.job_title || '').toLowerCase();
+        const company = (job.company || '').toLowerCase();
+        return title.includes(lowerQuery) || company.includes(lowerQuery);
+    });
+    
+    displayJobList(filtered);
+}
 
 // Load all jobs with CVs
 async function loadJobHistory() {
@@ -70,8 +93,13 @@ function displayJobList(jobs) {
         
         item.innerHTML = `
             <div class="job-item-header">
-                <div class="job-item-title">${job.job_title}</div>
-                <span class="score-badge ${scoreClass}">${job.best_score || 0}</span>
+                <div class="job-item-title" title="${job.job_title}">${job.job_title}</div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span class="score-badge ${scoreClass}">${job.best_score || 0}</span>
+                    <button class="btn-delete-job" title="Delete Job" onclick="event.stopPropagation(); deleteJob('${job.job_id}')">
+                        🗑️
+                    </button>
+                </div>
             </div>
             <div class="job-item-company">${job.company}</div>
             <div class="job-item-meta">
@@ -80,10 +108,73 @@ function displayJobList(jobs) {
             </div>
         `;
         
-        item.onclick = () => selectJob(job.job_id);
+        item.onclick = (e) => {
+            // Prevent selection when clicking delete
+            if (e.target.closest('.btn-delete-job')) return;
+            selectJob(job.job_id);
+        };
         container.appendChild(item);
     });
 }
+
+// Delete Job
+async function deleteJob(jobId) {
+    if (!confirm('Are you sure you want to delete this job and all its CVs?')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) throw new Error('Failed to delete job');
+        
+        // Remove from local list and UI
+        jobHistory = jobHistory.filter(j => j.job_id !== jobId);
+        
+        // Re-apply filter if active
+        const searchInput = document.getElementById('job-search-input');
+        filterJobs(searchInput ? searchInput.value : '');
+        
+        // Clear selection if deleted job was selected
+        if (selectedJobId === jobId) {
+            selectedJobId = null;
+            document.getElementById('variants-container').innerHTML = '';
+            
+            // Select next available if any
+            if (jobHistory.length > 0) {
+                selectJob(jobHistory[0].job_id);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error deleting job:', error);
+        alert('Failed to delete job');
+    }
+}
+
+// Delete Variant
+async function deleteVariant(variantId) {
+    if (!confirm('Are you sure you want to delete this CV variant?')) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/variants/${variantId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) throw new Error('Failed to delete variant');
+        
+        // Remove from local list
+        currentVariants = currentVariants.filter(v => v.id !== variantId);
+        
+        // Update UI
+        displayVariants(currentVariants);
+        
+    } catch (error) {
+        console.error('Error deleting variant:', error);
+        alert('Failed to delete variant');
+    }
+}
+
 
 // Select a job and load its variants
 async function selectJob(jobId) {
@@ -220,6 +311,9 @@ function displayVariants(variants) {
                 </button>
                 <button class="btn-icon btn-download" onclick="downloadVariant('${variant.id}')">
                     💾 Download
+                </button>
+                <button class="btn-icon btn-delete-variant" onclick="deleteVariant('${variant.id}')" title="Delete variant">
+                    🗑️
                 </button>
             </div>
         `;
@@ -360,11 +454,15 @@ async function generateFirstCV() {
     
     if (confirm(`Generate CV for ${job.job_title} at ${job.company}?`)) {
         try {
+            // Get variant count from slider
+            const slider = document.getElementById('variant-count');
+            const count = slider ? parseInt(slider.value) : 3;
+            
             // Use the same endpoint as Jobs window
             const response = await fetch(`${API_BASE}/jobs/${selectedJobId}/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify({ count: count })
             });
             
             if (!response.ok) throw new Error('Generation failed');

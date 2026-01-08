@@ -219,7 +219,7 @@ JSON:
             # Fallback: manual parsing (basic)
             return self._fallback_parse(text)
         
-        response = self.llm_router.llm.generate(
+        response = self.llm_router.generate(
             prompt,
             temperature=0.1,  # Low temp for structured output
             max_tokens=500
@@ -236,8 +236,9 @@ JSON:
                 job_data = json.loads(json_match.group())
                 logger.info("✅ LLM parsing successful")
                 return job_data
-            except json.JSONDecodeError:
-                logger.warning("JSON parse failed, using fallback")
+            except json.JSONDecodeError as e:
+                logger.warning(f"JSON parse failed: {e}")
+                logger.debug(f"Failed JSON content: {response}")
                 return self._fallback_parse(text)
         
         return self._fallback_parse(text)

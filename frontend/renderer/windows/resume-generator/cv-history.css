@@ -865,3 +865,35 @@ textarea:focus, input:focus {
     font-size: 0.875rem;
     border: 1px solid #475569;
 }
+
+/* Delete Job Button */
+.btn-delete-job {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px 6px;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-delete-job:hover {
+    opacity: 1;
+    background: rgba(239, 68, 68, 0.2);
+    transform: scale(1.1);
+}
+
+/* Delete Variant Button */
+.btn-delete-variant {
+    opacity: 0.6 !important;
+}
+
+.btn-delete-variant:hover {
+    opacity: 1 !important;
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: #ef4444 !important;
+}

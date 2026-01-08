@@ -34,7 +34,7 @@ class LLMConfig:
     # Ollama
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.1-8b-ctx32k:latest"  # Modelo que você tem instalado
-    ollama_timeout: int = 90  # Increased from 30s for complex prompts
+    ollama_timeout: int = 180  # Increased to 180s for complex prompts/slow hardware
     
     # OpenAI
     openai_api_key: Optional[str] = None
@@ -113,46 +113,85 @@ class LLMRouter:
         Gera resposta para um prompt raw.
         Useful for non-chat tasks like JSON extraction.
         """
-        # Default to Ollama for now as it's the primary local provider
-        if self.config.default_provider == LLMProvider.OLLAMA:
+        # Use OpenAI if configured as default
+        if self.config.default_provider == LLMProvider.OPENAI:
+            if not self.config.openai_api_key:
+                logger.error("OpenAI selected but API key not configured!")
+                # Fall back to Ollama
+                return self._generate_ollama(prompt, temperature, max_tokens, seed)
+            
             try:
-                response = requests.post(
-                    f"{self.config.ollama_base_url}/api/generate",
-                    json={
-                        "model": self.config.ollama_model,
-                        "prompt": prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": temperature,
-                            "num_predict": max_tokens,
-                            "seed": seed
-                        }
-                    },
-                    timeout=self.config.ollama_timeout
-                )
-                response.raise_for_status()
-                return response.json().get('response', '')
+                client = OpenAI(api_key=self.config.openai_api_key)
+                
+                # GPT-5 models have different parameter requirements
+                api_params = {
+                    "model": self.config.openai_model,
+                    "messages": [
+                        {"role": "system", "content": "You are a helpful assistant that outputs only valid JSON."},
+                        {"role": "user", "content": prompt}
+                    ]
+                }
+                
+                # GPT-5 specific parameters
+                if self.config.openai_model.startswith("gpt-5"):
+                    api_params["max_completion_tokens"] = max_tokens
+                    # GPT-5 only supports default temperature (1), don't send it
+                else:
+                    api_params["max_tokens"] = max_tokens
+                    api_params["temperature"] = temperature
+                
+                response = client.chat.completions.create(**api_params)
+                return response.choices[0].message.content
             except Exception as e:
-                logger.error(f"Ollama generate failed: {e}")
-                # Fallback to OpenAI if configured
-                if self.config.openai_api_key:
-                     try:
-                        client = OpenAI(api_key=self.config.openai_api_key)
-                        response = client.chat.completions.create(
-                            model=self.config.openai_model,
-                            messages=[
-                                {"role": "system", "content": "You are a helpful assistant found outputting JSON."},
-                                {"role": "user", "content": prompt}
-                            ],
-                            max_tokens=max_tokens,
-                            temperature=temperature
-                        )
-                        return response.choices[0].message.content
-                     except Exception as oe:
-                        logger.error(f"OpenAI fallback failed: {oe}")
-                raise e
+                logger.error(f"OpenAI generate failed: {e}")
+                # Fallback to Ollama if available
+                logger.info("Falling back to Ollama...")
+                return self._generate_ollama(prompt, temperature, max_tokens, seed)
+        
+        # Use Ollama as default
+        elif self.config.default_provider == LLMProvider.OLLAMA:
+            return self._generate_ollama(prompt, temperature, max_tokens, seed)
         
         return ""
+    
+    def _generate_ollama(self, prompt: str, temperature: float, max_tokens: int, seed: int = None) -> str:
+        """Helper method to generate with Ollama"""
+        try:
+            response = requests.post(
+                f"{self.config.ollama_base_url}/api/generate",
+                json={
+                    "model": self.config.ollama_model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": temperature,
+                        "num_predict": max_tokens,
+                        "seed": seed
+                    }
+                },
+                timeout=self.config.ollama_timeout
+            )
+            response.raise_for_status()
+            return response.json().get('response', '')
+        except Exception as e:
+            logger.error(f"Ollama generate failed: {e}")
+            # Fallback to OpenAI if configured
+            if self.config.openai_api_key and self.config.default_provider != LLMProvider.OPENAI:
+                 try:
+                    client = OpenAI(api_key=self.config.openai_api_key)
+                    response = client.chat.completions.create(
+                        model=self.config.openai_model,
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant found outputting JSON."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        max_tokens=max_tokens,
+                        temperature=temperature
+                    )
+                    return response.choices[0].message.content
+                 except Exception as oe:
+                    logger.error(f"OpenAI fallback failed: {oe}")
+            raise e
 
     def _init_clients(self):
         """Inicializa clients dos provedores."""

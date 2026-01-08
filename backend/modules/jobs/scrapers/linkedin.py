@@ -24,7 +24,7 @@ try:
     logger.info("✅ Selenium available for LinkedIn scraping")
 except ImportError:
     SELENIUM_AVAILABLE = False
-    logger.warning("⚠️ Selenium not available, will use HTTP-only scraping")
+    logger.warning("⚠️ Selenium IMPORTS failed, will use HTTP-only scraping")
 
 
 class LinkedInScraper(BaseScraper):
@@ -35,7 +35,7 @@ class LinkedInScraper(BaseScraper):
         # Use Selenium for larger searches if available
         # Lowered threshold to 5 because search engine splits maxJobsPerRun across sources
         # e.g. 50 jobs / 5 sources = 10 jobs per source. We want Selenium for this.
-        if max_jobs >= 5 and SELENIUM_AVAILABLE:
+        if SELENIUM_AVAILABLE:  # FORCE SELENIUM FOR DEBUGGING
             try:
                 logger.info(f"Using Selenium to fetch {max_jobs} LinkedIn jobs")
                 return self._search_with_selenium(filters, max_jobs)
@@ -263,29 +263,100 @@ class LinkedInScraper(BaseScraper):
             driver.get(search_url)
             time.sleep(3)  # Wait for initial load
             
+            # Verify Login Status
+            is_logged_in = False
+            try:
+                # Check for common logged-in elements (Nav bar, Me icon)
+                if driver.find_elements(By.ID, 'global-nav') or driver.find_elements(By.CSS_SELECTOR, '.global-nav__me-photo'):
+                    is_logged_in = True
+                    logger.info("✅ Verified: Browsing as Logged-In User")
+                else:
+                    logger.warning(f"⚠️ Detected GUEST view on search page: {driver.current_url}")
+                    
+                    # If we expected to be logged in (cookies loaded), retry login clearly
+                    # Ensure we have credentials
+                    if 'email' not in locals():
+                        from dotenv import load_dotenv
+                        load_dotenv()
+                        auth_config = filters.get('auth_config', {})
+                        email = auth_config.get('linkedinEmail') or os.getenv('LINKEDIN_EMAIL')
+                        password = auth_config.get('linkedinPassword') or os.getenv('LINKEDIN_PASSWORD')
+
+                    if cookies_loaded or (email and password):
+                        logger.info(f"🔄 Retrying full login flow (Credentials available: {bool(email)})...")
+                        
+                        # Go to login page
+                        driver.get('https://www.linkedin.com/login')
+                        time.sleep(2)
+                        
+                        # Check if already logged in (redirected)
+                        if 'feed' in driver.current_url or 'search' in driver.current_url:
+                            is_logged_in = True
+                        else:
+                            # Perform login
+                            try:
+                                email_field = driver.find_element(By.ID, 'username')
+                                email_field.clear()
+                                email_field.send_keys(email)
+                                
+                                password_field = driver.find_element(By.ID, 'password')
+                                password_field.send_keys(password)
+                                
+                                login_btn = driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]')
+                                login_btn.click()
+                                
+                                time.sleep(5)
+                                
+                                # Check success
+                                if 'feed' in driver.current_url or 'search' in driver.current_url or driver.find_elements(By.ID, 'global-nav'):
+                                    is_logged_in = True
+                                    logger.info("✅ Retry Login Successful")
+                                    # Update cookies
+                                    with open('linkedin_cookies.pkl', 'wb') as f:
+                                        pickle.dump(driver.get_cookies(), f)
+                                    
+                                    # Reload search
+                                    driver.get(search_url)
+                                    time.sleep(3)
+                                else:
+                                    logger.error("❌ Retry Login Failed")
+                            except Exception as e:
+                                logger.error(f"Retry login error: {e}")
+                                
+            except Exception as e:
+                logger.warning(f"Login check error: {e}")
+            
             # Scroll to load more jobs
             last_height = driver.execute_script("return document.body.scrollHeight")
             scrolls = 0
             max_scrolls = 20  # Safety limit
+            no_change_count = 0
             
             while len(job_urls) < max_jobs and scrolls < max_scrolls:
                 # Find all job links
                 try:
-                    job_elements = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/jobs/view/"]')
+                    # Look for various job card selectors
+                    selectors = [
+                        'a[href*="/jobs/view/"]',
+                        'a.job-card-list__title',
+                        'a.job-card-container__link',
+                        'div[data-job-id] a'
+                    ]
                     
-                    for elem in job_elements:
-                        try:
-                            href = elem.get_attribute('href')
-                            if href and '/jobs/view/' in href:
-                                clean_url = href.split('?')[0]
-                                if clean_url not in job_urls:
-                                    job_urls.append(clean_url)
-                                    
-                                if len(job_urls) >= max_jobs:
-                                    break
-                        except:
-                            continue
-                    
+                    found_new = False
+                    for selector in selectors:
+                        elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                        for elem in elements:
+                            try:
+                                href = elem.get_attribute('href')
+                                if href and '/jobs/view/' in href:
+                                    clean_url = href.split('?')[0]
+                                    if clean_url not in job_urls:
+                                        job_urls.append(clean_url)
+                                        found_new = True
+                            except:
+                                continue
+                                
                     if len(job_urls) >= max_jobs:
                         break
                     
@@ -293,16 +364,31 @@ class LinkedInScraper(BaseScraper):
                     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                     time.sleep(2)  # Wait for content to load
                     
+                    # Try clicking "See more jobs" button if it exists
+                    try:
+                        see_more = driver.find_elements(By.CSS_SELECTOR, 'button[aria-label="See more jobs"], button.infinite-scroller__show-more-button')
+                        if see_more and see_more[0].is_displayed():
+                            driver.execute_script("arguments[0].click();", see_more[0])
+                            time.sleep(2)
+                    except:
+                        pass
+
                     # Check if reached bottom
                     new_height = driver.execute_script("return document.body.scrollHeight")
                     if new_height == last_height:
-                        logger.info("Reached bottom of page, no more jobs to load")
-                        break
-                    
-                    last_height = new_height
+                        no_change_count += 1
+                        # Retry a few times before giving up (content might be loading)
+                        if no_change_count >= 3:
+                            logger.info("Reached bottom of page (height unchanged 3x), no more jobs to load")
+                            break
+                        time.sleep(2)
+                    else:
+                        no_change_count = 0
+                        last_height = new_height
+                        
                     scrolls += 1
                     
-                    if scrolls % 5 == 0:
+                    if scrolls % 2 == 0:
                         logger.info(f"Selenium scroll {scrolls}: Found {len(job_urls)} jobs so far")
                 
                 except Exception as e:

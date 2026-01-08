@@ -27,8 +27,8 @@ resume:
   embedding_model: "all-MiniLM-L6-v2"  # SentenceTransformers
   
   # LLM for generation
-  llm_provider: "ollama"
-  llm_model: "llama3.1:8b"
+  llm_provider: "openai"
+  llm_model: "gpt-4o-mini"  # Using gpt-4o-mini to verify template works
   temperature_base: 0.7
   temperature_increment: 0.05  # Increase per round
   

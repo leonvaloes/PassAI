@@ -151,6 +151,36 @@ class MongoDB:
                 return None
         return self.variants.find_one({"_id": variant_id})
 
+    def delete_job(self, job_id: Any) -> bool:
+        """
+        Delete a job and all associated variants
+        
+        Args:
+            job_id: ID of the job to delete
+            
+        Returns:
+            bool: True if deletions occurred
+        """
+        if isinstance(job_id, str):
+            try:
+                job_id = ObjectId(job_id)
+            except Exception as e:
+                logger.error(f"ObjectId conversion failed for {job_id}: {e}")
+                return False
+                
+        # 1. Delete Job
+        job_result = self.jobs.delete_one({"_id": job_id})
+        
+        # 2. Delete Variants
+        variants_result = self.variants.delete_many({"job_id": job_id})
+        
+        # 3. Delete Decisions (optional, if linked)
+        # self.decisions.delete_many(...)
+        
+        logger.info(f"Deleted Job {job_id}: {job_result.deleted_count} jobs, {variants_result.deleted_count} variants")
+        
+        return job_result.deleted_count > 0
+
     def record_decision(self, variant_id: Any, action: str, feedback: Optional[str] = None):
         """Record user decision"""
         if isinstance(variant_id, str):

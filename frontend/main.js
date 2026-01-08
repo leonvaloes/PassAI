@@ -137,6 +137,34 @@ function createSearchProfilesWindow() {
   });
 }
 
+// Job Search / Extractor window
+let jobSearchWindow = null;
+function createJobSearchWindow() {
+  if (jobSearchWindow) {
+    jobSearchWindow.focus();
+    return;
+  }
+
+  jobSearchWindow = new BrowserWindow({
+    width: 900,
+    height: 800,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    title: 'Job Search - PassAI',
+    backgroundColor: '#1a1a2e'
+  });
+
+  jobSearchWindow.loadFile('renderer/windows/job-search/job-search.html');
+  // jobSearchWindow.webContents.openDevTools();
+
+  jobSearchWindow.on('closed', () => {
+    jobSearchWindow = null;
+  });
+}
+
 // IPC Handler for opening Resume Generator
 ipcMain.on('open-resume-generator', () => {
   createResumeWindow();
@@ -150,6 +178,11 @@ ipcMain.on('open-jobs', () => {
 // IPC Handler for opening Search Profiles window
 ipcMain.on('open-search-profiles', () => {
   createSearchProfilesWindow();
+});
+
+// IPC Handler for opening Job Search / Extractor window
+ipcMain.on('open-job-search', () => {
+  createJobSearchWindow();
 });
 
 

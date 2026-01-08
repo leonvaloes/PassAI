@@ -286,8 +286,17 @@ class TemplateEngine:
         if 'telefone' in content:
             safe_replace_text(4, content['telefone'], preserve_prefix="Telefone: ")
         
-        # 5: LinkedIn
+        # 5: LinkedIn (special handling - need to remove hyperlinks first)
         if 'linkedin' in content:
+            para = doc.paragraphs[5]
+            # Remove hyperlinks from paragraph to avoid duplication
+            from docx.oxml.ns import qn
+            hyperlinks = para._element.findall('.//' + qn('w:hyperlink'))
+            for hyperlink in hyperlinks:
+                parent = hyperlink.getparent()
+                if parent is not None:
+                    parent.remove(hyperlink)
+            # Now replace text
             safe_replace_text(5, content['linkedin'])
         
         # 10-11: Resumo (merge lines if needed)
@@ -301,8 +310,10 @@ class TemplateEngine:
                     safe_replace_text(11, resumo_text[mid:].strip())
                 else:
                     safe_replace_text(10, resumo_text)
+                    safe_replace_text(11, "")  # Clear second line
             else:
                 safe_replace_text(10, resumo_text)
+                safe_replace_text(11, "")  # Clear second line to remove placeholder
         
         # 14-18: Habilidades (competencias)
         if 'competencias' in content:
@@ -494,12 +505,18 @@ class TemplateEngine:
 
         # 4. Replace content
         # Strategy: 
-        # a. Capture reference to the 'Next Header' paragraph (to insert before it)
+        # a. Capture the STYLE from an existing paragraph before deleting
         # b. Remove all paragraphs between Header and Next Header (cleaning old content)
-        # c. Insert new content before Next Header
+        # c. Insert new content with the captured style
         
-        target_para_idx = header_index + 1
+        target_para_idx = header_index
         ref_paragraph = doc.paragraphs[end_index] if end_index < len(doc.paragraphs) else None
+        
+        # CAPTURE TEMPLATE STYLE before deleting
+        template_style = None
+        if target_para_idx < len(doc.paragraphs):
+            template_para = doc.paragraphs[target_para_idx]
+            template_style = template_para.style
         
         # Safely remove old paragraphs in REVERSE order to avoid index shifting issues
         # We delete from (end_index - 1) down to target_para_idx
@@ -525,30 +542,52 @@ class TemplateEngine:
         
         lines = exp_text.split('\n')
         for line in lines:
-            line = line.strip()
-            if not line: 
-                continue # Skip empty lines for cleaner look, or add spacer if originally intended?
+            original_line = line.strip()
             
-            clean_text = line.replace('**', '').replace('*', '')
+            # Keep empty lines for spacing between companies
+            if not original_line:
+                if ref_paragraph:
+                    new_p = ref_paragraph.insert_paragraph_before("")
+                else:
+                    new_p = doc.add_paragraph("")
+                continue
+            
+            clean_text = original_line.replace('**', '').replace('*', '')
             
             if ref_paragraph:
                 new_p = ref_paragraph.insert_paragraph_before(clean_text)
             else:
                 new_p = doc.add_paragraph(clean_text)
             
-            # Apply styles logic
-            if line.startswith('**') and line.endswith('**'):
-                if new_p.runs:
-                    new_p.runs[0].bold = True
-            elif line.startswith('*') and line.endswith('*'):
-                if new_p.runs:
-                    new_p.runs[0].italic = True
+            # Apply template style to match other sections
+            if template_style:
+                new_p.style = template_style
             
-            # Basic styling: try to copy style from header? No, header is big.
-            # Copy style from Normal or Body Text? 
-            # Usually new paragraphs get 'Normal' style by default which is fine for CVs.
-            # If we wanted to copy style from the deleted paragraphs, we should have saved it.
-            # But 'Normal' is usually safe.
+            # Apply specific formatting based on user requirements
+            if original_line.startswith('**') and original_line.endswith('**'):
+                # Company name - Open Sans ExtraBold 10pt
+                if new_p.runs:
+                    new_p.runs[0].font.name = 'Open Sans ExtraBold'
+                    new_p.runs[0].font.size = Pt(10)
+                    new_p.runs[0].bold = False
+            elif original_line.startswith('*') and original_line.endswith('*'):
+                # Job title and period - Nunito 11pt bold AND italic
+                if new_p.runs:
+                    new_p.runs[0].font.name = 'Nunito'
+                    new_p.runs[0].font.size = Pt(11)
+                    new_p.runs[0].bold = True
+                    new_p.runs[0].italic = True
+            elif original_line.startswith('•'):
+                # Bullets - Nunito 11pt with indent (tab)
+                if new_p.runs:
+                    new_p.runs[0].font.name = 'Nunito'
+                    new_p.runs[0].font.size = Pt(11)
+                # Add left indent for bullet (approximately 1 tab = 0.5 inches)
+                new_p.paragraph_format.left_indent = Inches(0.5)
+            else:
+                # Other content (separators, etc.) - Nunito default
+                if new_p.runs:
+                    new_p.runs[0].font.name = 'Nunito'
 
     def _fill_formation_section(self, doc: Document, content: Dict, warnings: List[str]):
         """Dynamically find 'FORMAÇÃO' section and replace"""

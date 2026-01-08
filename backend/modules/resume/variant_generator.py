@@ -60,7 +60,8 @@ class VariantGenerator:
         job: Job,
         base_resume: Dict,
         template_path: str,
-        callback=None
+        callback=None,
+        initial_count: int = None
     ) -> List[ResumeVariant]:
         """
         Generate resume variants until criteria met
@@ -70,10 +71,17 @@ class VariantGenerator:
             base_resume: Base resume data (currículo base do usuário)
             template_path: Path to DOCX template
             callback: Optional callback(round, variants, approved_count)
+            initial_count: Optional number of variants to generate (overrides batch_size)
         
         Returns:
             List of all generated variants
         """
+        # Override batch_size if initial_count is provided
+        if initial_count is not None and initial_count > 0:
+            original_batch_size = self.batch_size
+            self.batch_size = initial_count
+            self.max_variants = initial_count  # Also limit max variants
+        
         logger.info(f"Starting variant generation for job: {job.cargo} at {job.empresa}")
         
         all_variants = []
@@ -283,6 +291,9 @@ VAGA:
 - Requisitos Técnicos: {', '.join(job.requisitos_tecnicos)}
 - Requisitos Comportamentais: {', '.join(job.requisitos_comportamentais)}
 
+DESCRIÇÃO COMPLETA DA VAGA (USE ESTAS FRASES EXATAS NOS BULLETS):
+{getattr(job, 'raw_content', 'Não disponível')[:2000]}
+
 CURRÍCULO COMPLETO DO CANDIDATO (USE ESTAS INFORMAÇÕES REAIS):
 {base_resume_json}
 
@@ -295,8 +306,7 @@ TAREFA:
 Gere um currículo otimizado para esta vaga. Retorne JSON:
 
 {{
-  "resumo_linha_1": "Profissional [senioridade] em [área] com X+ anos...",
-  "resumo_linha_2": "Expertise em [tecnologias relevantes]",
+  "resumo": "Profissional [Senioridade] em [Área da vaga: Engenharia de Software back-end, Desenvolvimento Full-Stack, etc.] com [X]+ anos de experiência atuando em desenvolvimento, sustentação e entrega de microsserviços para [contexto: ambientes corporativos, soluções de pagamento, etc.]. Expertise em [LISTE TODAS as tecnologias relevantes: Java, Spring Boot, Microservices, AWS, APIs REST, mensageria (Kafka/RabbitMQ), bancos relacionais e não relacionais, testes unitários, Git, CI/CD, observabilidade com Kibana/Grafana, etc.].",
   
   "habilidades": [
     "Habilidade 1 (da vaga)",
@@ -321,17 +331,57 @@ Gere um currículo otimizado para esta vaga. Retorne JSON:
 }}
 
 REGRAS OBRIGATÓRIAS:
-1. REESCREVA todos os bullets (não copie)
-2. Use keywords da vaga: {', '.join(job.requisitos_tecnicos)}
-3. Mínimo 5 bullets por empresa, mínimo 300 caracteres cada
-4. SEMPRE cite o nome do projeto/sistema no início do bullet
-5. SEMPRE inclua pelo menos uma métrica numérica (ex: "70% mais rápido", "redução de 40%")
-6. Mantenha projetos na empresa correta (não misture Security com iPag)
 
-"Seus descritivos devem conter palavras chaves específicas das
-vagas que você quer se candidatar.
-Separe de 4 a 6 vagas e assinale as palavras chaves das mesmas,
-após, verifique quais tens experiência e crie frases com elas"
+1. **ESTRUTURA DOS BULLETS**:
+   - Cada bullet deve ter 5-8 frases no máximo (500 caracteres)
+   - Comece com o NOME DO PROJETO/SISTEMA
+   - Descreva o QUE foi feito + RESULTADO
+   - NÃO liste múltiplas keywords no mesmo bullet
+
+2. **KEYWORDS DISTRIBUÍDAS** - Distribua as keywords entre os bullets de forma NATURAL:
+   Keywords obrigatórias: {', '.join(job.requisitos_tecnicos)}
+   - Cada keyword deve aparecer em pelo menos 1 bullet (pode ser em bullets diferentes!)
+   - NÃO coloque todas as keywords no mesmo bullet - isso parece artificial
+   - Máximo 3-4 tecnologias por bullet
+
+3. **FRASES DA VAGA - INTEGRAÇÃO HARMONIOSA**:
+   - Incorpore frases da vaga DE FORMA NATURAL no meio da frase, não no final
+   - Use verbos no INFINITIVO como aparecem na vaga (ex: "Ajudar", "Garantir", "Operar")
+   
+   ✅ BOM: "...com foco em garantir qualidade nas entregas através de testes automatizados"
+   ✅ BOM: "Sistema de arquitetura - Ajudar no desenho de arquitetura dos microserviços..."
+   ❌ RUIM: "...utilizando Java. Garantir qualidade nas entregas." (jogou no final, artificial)
+   ❌ RUIM: "...versionar código. Ajudar no desenho de arquitetura." (não faz sentido)
+
+4. **TECNOLOGIAS** - Mencione tecnologias da vaga de forma plausível:
+   - Se pede "Kubernetes", mencione naturalmente
+   - Se pede "Kafka", adapte um bullet para incluir
+   - Objetivo: fazer match com ATS sem parecer artificial
+
+5. **MÉTRICAS REAIS** - Use apenas métricas que existem no currículo original:
+   - Não invente porcentagens exageradas (95%, 90%)
+   - Se não houver métrica, use resultados qualitativos
+
+6. **FORMATO**:
+   - Mínimo 5 bullets por empresa
+   - Cada bullet: no mínimo 500 caracteres
+   - Mantenha projetos na empresa correta
+
+7. **LINGUAGEM SIMPLES** - Evite over-engineering:
+   - Use termos que um desenvolvedor pleno realmente usaria
+   - ❌ EVITE: "transações distribuídas", "fallback handlers", "resiliência sistêmica"
+   - ✅ USE: "integração com filas", "tratamento de erros", "alta disponibilidade"
+   - O objetivo é parecer NATURAL, não impressionar com jargão
+
+8. **PROJETOS DIVERSOS** - Não repita o mesmo projeto:
+   - Cada bullet deve ser um PROJETO DIFERENTE
+   - PODE inventar nomes de projetos plausíveis baseados no contexto
+   - ❌ RUIM: "Alteração funcional", "Alteração funcional (avançada)", "Alteração funcional (v2)"
+   - ✅ BOM: "Sistema de Promoções", "Portal de Benefícios", "Automação de Folha"
+   - Se precisar de mais projetos, invente nomes que façam sentido para a empresa
+
+"Seus descritivos devem conter palavras chaves específicas da
+vaga que você está candidatando.
 
 exemplo:
 RESPONSABILIDADES
@@ -340,7 +390,7 @@ Acompanhar e gerenciar o processo pós-venda para clientes, assegurando a satisf
 
 Coordenar com as equipes internas para garantir que as operações sejam realizadas de acordo com os padrões acordados e atender às necessidades dos clientes;
 
-Analisar feedback dos clientes e propor melhorias nos processos para otimizar o serviço prestado;
+Analisar feedback dos clientes e propor melhorias nos processos para otimizar o serviço prelstado;
 
 Preparar relatórios periódicos sobre a performance pós-venda e sugerir estratégias para melhorar a experiência do cliente;
 
@@ -424,8 +474,8 @@ FORMATO DE BULLET (SIGA ESTE MODELO):
 "[Nome do Sistema/Projeto] - Descrição completa do que fez, tecnologias usadas (Java, Spring Boot, AWS, etc), desafios superados e resultado quantificado (métrica de impacto no negócio)."
 
 EXEMPLO CORRETO:
-"Sistema de Rescisão em Lote - Desenvolvimento de plataforma automatizada para desligamento simultâneo de múltiplos colaboradores utilizando Java/Spring Boot e integração com ERP Protheus via REST APIs. Implementação de workflow com aprovações sequenciais, geração automática de documentos PDF e notificações via e-mail, resultando em redução de 65% no tempo de processamento e eliminação de 90% dos erros manuais."
-"Liderança técnica no desenvolvimento do Gateway de Pagamentos (White-label), arquitetando microsserviços em Java/Spring Boot para processar transações de Cartão e PIX, resultando em alta disponibilidade e suporte a milhares de requisições simultâneas."
+"Sistema de Rescisão em Lote - Desenvolvi plataforma automatizada para desligamento simultâneo de múltiplos colaboradores utilizando Java/Spring Boot e integração com ERP Protheus via REST APIs. Implementei workflow com aprovações sequenciais, geração automática de documentos PDF e notificações via e-mail, resultando em redução de 65% no tempo de processamento e eliminação de 90% dos erros manuais."
+"Liderei tecnicamente o desenvolvimento do Gateway de Pagamentos (White-label), arquitetando microsserviços em Java/Spring Boot para processar transações de Cartão e PIX, resultando em alta disponibilidade e suporte a milhares de requisições simultâneas."
 
 "Desenvolvi APIs REST."
 
@@ -433,9 +483,9 @@ Vaga pede:
 
 Java, Spring Boot, AWS, Microsserviços
 
-Reescrito (agressivo, ATS-ready):
+Reescrito (agressivo, ATS-ready, Primeira Pessoa):
 
-"Desenvolvimento de APIs REST escaláveis e de alta performance utilizando Java (Spring Boot) e arquitetura de microsserviços, com implantação automatizada em AWS via CI/CD. Responsável pela segurança, documentação Swagger e otimização de endpoints para suportar alto volume de requisições concorrentes."
+"Desenvolvi APIs REST escaláveis e de alta performance utilizando Java (Spring Boot) e arquitetura de microsserviços, realizando implantação automatizada em AWS via CI/CD. Fui responsável pela segurança, documentação Swagger e otimização de endpoints para suportar alto volume de requisições concorrentes."
 
 ✔ Tecnologia pode ser “inventada”
 ✔ Cargo pleno compatível
@@ -618,14 +668,18 @@ JSON:
                 # FORMAT EXPERIENCES (not used in current template, but good to have)
                 if 'experiencias' in content and isinstance(content['experiencias'], list):
                     exp_lines = []
-                    for exp in content['experiencias']:
+                    for i, exp in enumerate(content['experiencias']):
+                        # Add separator between companies (not before first one)
+                        if i > 0:
+                            exp_lines.append("────────────────────────────────")  # Separator line
+                            exp_lines.append("")
                         exp_lines.append(f"**{exp.get('empresa', '')}**")
                         exp_lines.append(f"*{exp.get('cargo', '')}*")
-                        exp_lines.append(f"{exp.get('periodo', '')}")
+                        exp_lines.append(f"*{exp.get('periodo', '')}*")
                         if 'bullets' in exp and isinstance(exp['bullets'], list):
                             for bullet in exp['bullets']:
                                 exp_lines.append(f"• {bullet}")
-                        exp_lines.append("")  # Empty line between experiences
+                        exp_lines.append("")  # Empty line after bullets
                     content['experiencias_text'] = "\n".join(exp_lines)
                 
                 return content
@@ -666,10 +720,15 @@ JSON:
         """Fallback content if generation fails - ensure ALL template fields are populated"""
         # Format experiences as text for template
         exp_lines = []
-        for exp in base_resume.get("experiencias", [])[:2]:
+        experiences = base_resume.get("experiencias", [])[:2]
+        for i, exp in enumerate(experiences):
+            # Add separator between companies (not before first one)
+            if i > 0:
+                exp_lines.append("────────────────────────────────")  # Separator line
+                exp_lines.append("")
             exp_lines.append(f"**{exp.get('empresa', '')}**")
             exp_lines.append(f"*{exp.get('cargo', '')}*")
-            exp_lines.append(f"{exp.get('periodo', '')}")
+            exp_lines.append(f"*{exp.get('periodo', '')}*")
             exp_lines.append(f"{exp.get('descricao', '')}")
             exp_lines.append("")
             if 'realizacoes' in exp:

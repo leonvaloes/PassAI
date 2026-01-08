@@ -35,6 +35,7 @@ class JobResponse(BaseModel):
 class GenerateRequest(BaseModel):
     """Request to generate variants"""
     base_resume: Optional[Dict[str, Any]] = None
+    count: Optional[int] = None  # Number of variants to generate
 
 
 class VariantResponse(BaseModel):

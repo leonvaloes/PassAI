@@ -55,6 +55,14 @@
                 </div>
             </div>
             
+            </div>
+            
+            <!-- Job Search/Filter -->
+            <div style="margin-bottom: 12px;">
+                <input type="text" id="job-search-input" placeholder="🔍 Filter jobs..." 
+                       style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #4b5563; background: #374151; color: white;">
+            </div>
+
             <div style="border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px; padding-bottom: 12px;">
                 <h3 style="margin: 0; font-size: 1rem">Jobs <span id="jobs-count" class="badge" style="margin-left: 8px;">0</span></h3>
             </div>
@@ -122,8 +130,8 @@
             </div>
             <div class="modal-body">
                 <div class="input-tabs">
-                    <button class="tab active" onclick="switchNewCVTab('text')">📝 Text</button>
-                    <button class="tab" onclick="switchNewCVTab('url')">🔗 URL</button>
+                    <button class="tab active" data-tab="text" onclick="switchNewCVTab('text')">📝 Text</button>
+                    <button class="tab" data-tab="url" onclick="switchNewCVTab('url')">🔗 URL</button>
                 </div>
                 <div class="tab-content active" id="new-cv-tab-text">
                     <textarea id="new-cv-job-text" placeholder="Paste job description..." rows="10" style="width: 100%;"></textarea>
@@ -131,10 +139,11 @@
                 <div class="tab-content" id="new-cv-tab-url">
                     <input type="url" id="new-cv-job-url" placeholder="https://linkedin.com/jobs/..." style="width: 100%;" />
                 </div>
+                <div id="new-cv-status" class="status-msg hidden" style="margin-top: 10px; color: #3b82f6;"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeNewCVModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="extractAndGenerateCV()">Extract & Generate</button>
+                <button id="btn-extract-new-cv" class="btn btn-primary" onclick="extractAndGenerateCVFromModal()">Extract & Generate</button>
             </div>
         </div>
     </div>

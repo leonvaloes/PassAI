@@ -290,8 +290,11 @@ async def start_generation(job_id: str, request: GenerateRequest):
             'habilidades': user_profile['habilidades']
         }
         
+        # Extract count from request (if provided)
+        count = request.count if request.count else None
+        
         # Start generation in background
-        asyncio.create_task(generate_variants_task(job_id, job_data, base_resume))
+        asyncio.create_task(generate_variants_task(job_id, job_data, base_resume, count))
         
         return {"message": "Generation started", "job_id": job_id}
     
@@ -302,7 +305,7 @@ async def start_generation(job_id: str, request: GenerateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def generate_variants_task(job_id: str, job_data: dict, base_resume: dict):
+async def generate_variants_task(job_id: str, job_data: dict, base_resume: dict, count: Optional[int] = None):
     """Background task for generating variants"""
     try:
         from database.models import Job
@@ -336,7 +339,8 @@ async def generate_variants_task(job_id: str, job_data: dict, base_resume: dict)
                 job=job,
                 base_resume=base_resume,
                 template_path=template_engine.template_path,
-                callback=progress_callback
+                callback=progress_callback,
+                initial_count=count  # Pass user-selected count
             )
         )
         
@@ -345,6 +349,16 @@ async def generate_variants_task(job_id: str, job_data: dict, base_resume: dict)
             None,
             lambda: ranker.rank(variants, job)
         )
+        
+        # SAVE VARIANTS TO DB (CRITICAL FIX)
+        if db:
+            logger.info(f"Saving {len(ranked)} variants to database...")
+            for v in ranked:
+                # Convert to dict and ensure job_id is ObjectId if needed
+                variant_data = v.dict()
+                db.insert_variant(variant_data)
+        else:
+            logger.error("Database connection lost! Cannot save variants.")
         
         # Send completion
         if job_id in active_connections:
@@ -390,6 +404,29 @@ async def list_variants(job_id: str):
         logger.error(f"Failed to list variants: {e}")
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/variants/{variant_id}")
+async def delete_variant(variant_id: str):
+    """Delete a specific variant"""
+    try:
+        if not db:
+            raise HTTPException(status_code=500, detail="Database not initialized")
+        
+        # Delete the variant
+        result = db.variants.delete_one({"_id": ObjectId(variant_id)})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Variant not found")
+        
+        logger.info(f"Deleted variant: {variant_id}")
+        return {"message": "Variant deleted successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete variant: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -570,38 +607,89 @@ async def download_variant(variant_id: str):
 async def get_resume_history():
     """
     Get ALL ranked jobs with their CV generation status
-    Returns: all jobs from 'jobs' collection with variant counts
+    Returns: all jobs from 'jobs' collection + 'job_postings' collection with variant counts
     """
     try:
-        # Get all jobs from the jobs collection (ranked jobs)
-        jobs_cursor = db.db.jobs.find().sort("createdAt", -1)
+        # Get jobs from BOTH collections (Resume Generator 'jobs' and Aggregator 'job_postings')
+        # This fixes the issue where scraped jobs (in job_postings) weren't showing up in history
         
-        history = []
-        for job in jobs_cursor:
-            job_id = job["_id"]
+        # 1. Get Resume Generator jobs
+        resume_jobs_cursor = db.db.jobs.find()
+        
+        # 2. Get Aggregator jobs (Scraped)
+        aggregator_jobs_cursor = db.db.job_postings.find()
+        
+        all_jobs_map = {}
+        
+        # Helper to process job doc
+        def process_job(job, source_collection):
+            job_id = str(job["_id"])
             
+            # Skip if already processed (deduplication by ID if they share IDs, though unlikely across collections)
+            if job_id in all_jobs_map:
+                return
+
             # Count variants for this job
-            variant_count = db.db.resume_variants.count_documents({"job_id": job_id})
+            variant_count = db.db.resume_variants.count_documents({"job_id": job["_id"]}) # db.db accesses pymongo db directly
             
             # Get best score if variants exist
             best_score = 0
             if variant_count > 0:
                 best_variant = db.db.resume_variants.find_one(
-                    {"job_id": job_id},
+                    {"job_id": job["_id"]},
                     sort=[("ats_score", -1)]
                 )
                 best_score = best_variant.get("ats_score", 0) if best_variant else 0
             
-            history.append({
-                "job_id": str(job_id),
-                "job_title": job.get("cargo") or job.get("title") or "Unknown",
-                "company": job.get("empresa") or job.get("company") or "Unknown",
-                "created_at": job.get("createdAt").isoformat() if job.get("createdAt") else None,
+            # Normalize fields
+            title = job.get("cargo") or job.get("title") or "Unknown"
+            company = job.get("empresa") or job.get("company") or "Unknown"
+            
+            # Handle date
+            created_at = job.get("createdAt") or job.get("extracted_at")
+            
+            # Ensure it's a datetime object
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except:
+                    created_at = None
+            
+            # If datetime, ensure timezone awareness (Assume UTC if naive)
+            if isinstance(created_at, datetime):
+                if created_at.tzinfo is None:
+                    from datetime import timezone
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+            
+            all_jobs_map[job_id] = {
+                "job_id": job_id,
+                "job_title": title,
+                "company": company,
+                "created_at": created_at.isoformat() if created_at else None,
+                "_sort_date": created_at or datetime.min.replace(tzinfo=timezone.utc), # Internal sort key
                 "variants_count": variant_count,
                 "best_score": round(best_score, 1) if best_score else 0,
                 "status": "completed" if variant_count > 0 else "no_cvs",
-                "has_cvs": variant_count > 0
-            })
+                "has_cvs": variant_count > 0,
+                "source": source_collection
+            }
+
+        # Process both sources
+        for job in resume_jobs_cursor:
+            process_job(job, "manual_resume")
+            
+        for job in aggregator_jobs_cursor:
+            process_job(job, "aggr_scraper")
+            
+        # Convert to list
+        history = list(all_jobs_map.values())
+        
+        # Sort by date descending (using the datetime object)
+        history.sort(key=lambda x: x["_sort_date"], reverse=True)
+        
+        # Remove internal sort key
+        for h in history:
+            h.pop("_sort_date", None)
         
         return history
     

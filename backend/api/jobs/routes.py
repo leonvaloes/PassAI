@@ -4,9 +4,10 @@ Job Aggregator API - Routes
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 import logging
+from datetime import datetime
 
 from modules.jobs.models import (
-    JobPosting, CreateJobRequest, ScrapeJobRequest, JobResponse,
+    JobPosting, CreateJobRequest, ScrapeJobRequest, GenericJobRequest, JobResponse,
     JobStatus, Location
 )
 from modules.jobs.database import JobsDatabase
@@ -35,6 +36,82 @@ def init_jobs_system():
     job_scorer = JobScorer(llm_router)
     
     logger.info("✅ Job aggregator system initialized")
+
+
+@router.post("", response_model=JobResponse)
+async def handle_generic_job_request(request: GenericJobRequest):
+    """
+    Generic entry point for job extraction/creation.
+    Handles 'text' (manual paste) or 'url' (scraping).
+    """
+    try:
+        if request.input_type == "url":
+            # Delegate to scraping logic
+            scrape_request = ScrapeJobRequest(url=request.content)
+            return await scrape_job_from_url(scrape_request)
+            
+        elif request.input_type == "text":
+            # Handle manual text extraction
+            if not jobs_db:
+                raise HTTPException(status_code=503, detail="Jobs system not initialized")
+                
+            # Use enricher to parse text
+            from modules.jobs.enricher import enrich_job_with_ai
+            from modules.resume.llm_adapter import create_llm_for_resume
+            
+            # Create base data structure
+            raw_data = {
+                "rawText": request.content,
+                "description": request.content, # Fallback
+                "title": None,
+                "company": None
+            }
+            
+            # Enrich
+            llm_router = create_llm_for_resume()
+            enriched_data = enrich_job_with_ai(raw_data, llm_router)
+            
+            # Create JobPosting
+            job = JobPosting(
+                url=f"manual://text/{datetime.now().timestamp()}",
+                title=enriched_data.get('title') or "Vaga Manual", # Enricher often fails to get title from loose text, fallback
+                company=enriched_data.get('company') or "Confidencial",
+                description=enriched_data.get('description') or request.content,
+                location=enriched_data.get('location'),
+                salaryExplicit=enriched_data.get('salary'),
+                techKeywords=enriched_data.get('techKeywords', []),
+                seniority=enriched_data.get('seniority'),
+                mustHave=enriched_data.get('mustHave', []),
+                niceToHave=enriched_data.get('niceToHave', []),
+                rawText=request.content,
+                extractionMethod="manual",
+                extractionConfidence={"text": 1.0}
+            )
+            
+            # Save to MongoDB
+            job_id = jobs_db.create_job(job)
+            created_job = jobs_db.get_job(job_id)
+            
+            return JobResponse(
+                id=job_id,
+                url=created_job["url"],
+                title=created_job.get("title"),
+                company=created_job.get("company"),
+                location=created_job.get("location"),
+                salary=created_job.get("salaryExplicit"),
+                rankingScore=created_job.get("rankingScore"),
+                createdAt=created_job["createdAt"]
+            )
+            
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid input_type: {request.input_type}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to process generic job request: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.post("/create", response_model=JobResponse)
@@ -172,19 +249,25 @@ async def list_jobs(
             sort_order=-1
         )
         
-        return [
-            JobResponse(
-                id=job["_id"],
+        result_jobs = []
+        for job in jobs:
+            created_at = job.get("createdAt")
+            if isinstance(created_at, datetime) and created_at.tzinfo is None:
+                from datetime import timezone
+                created_at = created_at.replace(tzinfo=timezone.utc)
+                
+            result_jobs.append(JobResponse(
+                id=str(job["_id"]),
                 url=job["url"],
                 title=job.get("title"),
                 company=job.get("company"),
                 location=job.get("location"),
                 salary=job.get("salaryExplicit"),
                 rankingScore=job.get("rankingScore"),
-                createdAt=job["createdAt"]
-            )
-            for job in jobs
-        ]
+                createdAt=created_at
+            ))
+            
+        return result_jobs
     
     except Exception as e:
         logger.error(f"Failed to list jobs: {e}")
@@ -266,8 +349,11 @@ async def get_ranked_jobs(
                     'score': None
                 })
         
-        # Sort by overall score (descending)
-        ranked_jobs.sort(key=lambda j: j.get('score', {}).get('overall', 0) if j.get('score') else 0, reverse=True)
+        # Sort by Date (descending) as requested by user, then by Score
+        ranked_jobs.sort(key=lambda j: (
+            j.get('createdAt', ''),
+            j.get('score', {}).get('overall', 0) if j.get('score') else 0
+        ), reverse=True)
         
         return ranked_jobs
     
