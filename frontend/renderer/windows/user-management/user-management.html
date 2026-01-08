@@ -43,7 +43,7 @@
 
                         <div class="form-group">
                             <label for="nome">Nome Completo *</label>
-                            <input type="text" id="nome" required 
+            <input type="text" id="nome" required 
                                    placeholder="ex: Leonardo Valões Novaes Ribeiro">
                         </div>
 
@@ -51,6 +51,24 @@
                             <label for="cargo-atual">Cargo Atual *</label>
                             <input type="text" id="cargo-atual" required 
                                    placeholder="ex: Desenvolvedor Full-Stack">
+                        </div>
+                    </div>
+
+                    <!-- AI Profile Fill Section -->
+                    <div class="form-section ai-fill-section">
+                        <div class="ai-header">
+                            <h3>✨ Preencher com IA</h3>
+                            <button type="button" class="btn-ai" id="toggle-ai-btn">Expandir</button>
+                        </div>
+                        
+                        <div id="ai-panel" class="ai-panel hidden">
+                            <p class="ai-instruction">
+                                Cole seu CV, resumo do LinkedIn, ou descreva sua experiência profissional. 
+                                A IA vai extrair automaticamente suas experiências, formações e habilidades.
+                            </p>
+                            <textarea id="ai-input" placeholder="Ex: Trabalhei na Security de 2022 a 2024 como desenvolvedor full-stack. Desenvolvi sistemas com Java, Spring Boot, React..." rows="6"></textarea>
+                            <button type="button" class="btn-primary" id="extract-ai-btn">🤖 Extrair Dados</button>
+                            <div id="ai-status" class="ai-status"></div>
                         </div>
                     </div>
 

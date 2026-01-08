@@ -26,6 +26,17 @@ function setupEventListeners() {
     cancelBtn.addEventListener('click', closeModal);
     userForm.addEventListener('submit', handleSubmit);
     
+    // AI extraction
+    const toggleAIBtn = document.getElementById('toggle-ai-btn');
+    const extractAIBtn = document.getElementById('extract-ai-btn');
+    
+    if (toggleAIBtn) {
+        toggleAIBtn.addEventListener('click', toggleAIPanel);
+    }
+    if (extractAIBtn) {
+        extractAIBtn.addEventListener('click', extractWithAI);
+    }
+    
     // Close modal on outside click
     userModal.addEventListener('click', (e) => {
         if (e.target === userModal) closeModal();
@@ -204,5 +215,66 @@ async function deleteUser(userId, userName) {
         await loadUsers();
     } catch (error) {
         alert(`Erro: ${error.message}`);
+    }
+}
+
+// AI Profile Fill Functions
+function toggleAIPanel() {
+    const aiPanel = document.getElementById('ai-panel');
+    const toggleBtn = document.getElementById('toggle-ai-btn');
+    
+    if (aiPanel.classList.contains('hidden')) {
+        aiPanel.classList.remove('hidden');
+        toggleBtn.textContent = 'Recolher';
+    } else {
+        aiPanel.classList.add('hidden');
+        toggleBtn.textContent = 'Expandir';
+    }
+}
+
+async function extractWithAI() {
+    const aiInput = document.getElementById('ai-input');
+    const statusDiv = document.getElementById('ai-status');
+    const extractBtn = document.getElementById('extract-ai-btn');
+    
+    const text = aiInput.value.trim();
+    if (!text) {
+        statusDiv.className = 'ai-status error';
+        statusDiv.textContent = '⚠️ Por favor, insira algum texto para extrair';
+        return;
+    }
+    
+    // Show loading
+    statusDiv.className = 'ai-status loading';
+    statusDiv.textContent = '🤖 Analisando com IA...';
+    extractBtn.disabled = true;
+    
+    try {
+        const response = await fetch(`${API_BASE}/ai-extract`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({text})
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Erro na extração');
+        }
+        
+        const data = await response.json();
+        
+        // Auto-fill would go here  (experiencias, educacao, habilidades)
+        // For now, just show success since we only have basic fields in form
+        statusDiv.className = 'ai-status success';
+        statusDiv.textContent = `✅ ${data.message || 'Dados extraídos com sucesso!'}`;
+       statusDiv.textContent += `\n📊 ${data.experiencias.length} exp, ${data.educacao.length} edu, ${data.habilidades.length} skills`;
+        
+        console.log('Extracted data:', data);
+        
+    } catch (error) {
+        statusDiv.className = 'ai-status error';
+        statusDiv.textContent = `❌ ${error.message}`;
+    } finally {
+        extractBtn.disabled = false;
     }
 }
