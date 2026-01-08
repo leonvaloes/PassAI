@@ -276,8 +276,11 @@ TEXT TO PARSE:
 JSON OUTPUT:"""
 
     try:
+        # Create fresh LLM router instance to avoid state issues
+        llm = LLMRouter()
+        
         # Call LLM (using configured model - Ollama or OpenAI)
-        llm_response = llm_router.generate(  # NOT async, don't use await
+        llm_response = llm.generate(  # NOT async, don't use await
             prompt=prompt,
             temperature=0.3,  # Low temperature for structured output
             max_tokens=2000  # Enough for detailed extractions
@@ -339,8 +342,10 @@ JSON OUTPUT:"""
         logger.error(f"LLM response was: {llm_response}")
         raise HTTPException(
             500,
-            f"Erro ao processar resposta da IA. Por favor, tente novamente ou forneça mais detalhes."
+            f"IA não retornou JSON válido. Tente reformular o texto ou use um formato mais simples."
         )
     except Exception as e:
+        import traceback
         logger.error(f"❌ AI extraction error: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(500, f"Erro na extração: {str(e)}")
