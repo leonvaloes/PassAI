@@ -98,3 +98,18 @@ class UserProfileList(BaseModel):
 class SetActiveUserRequest(BaseModel):
     """Schema for setting active user"""
     user_id: str
+
+
+class AIExtractRequest(BaseModel):
+    """Schema for AI extraction from natural language text"""
+    text: str = Field(..., min_length=10, description="Natural language text describing professional background")
+
+
+class AIExtractResponse(BaseModel):
+    """Schema for AI extraction response"""
+    experiencias: List[Experience] = []
+    educacao: List[Education] = []
+    habilidades: List[str] = []
+    idiomas: List[Language] = []
+    success: bool = True
+    message: Optional[str] = None

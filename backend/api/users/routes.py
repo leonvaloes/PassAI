@@ -2,23 +2,33 @@
 User Management API Routes
 """
 import logging
+import json
 from fastapi import APIRouter, HTTPException
 from typing import List
 from bson import ObjectId
 from datetime import datetime
 
 from database.mongodb import get_mongodb
+from core.llm.router import LLMRouter
 from .schemas import (
     UserProfileCreate,
     UserProfileUpdate,
     UserProfileResponse,
     UserProfileList,
-    SetActiveUserRequest
+    SetActiveUserRequest,
+    AIExtractRequest,
+    AIExtractResponse,
+    Experience,
+    Education,
+    Language
 )
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
+
+# Initialize LLM router
+llm_router = LLMRouter()
 
 
 def _user_to_response(user_doc: dict) -> UserProfileResponse:
@@ -206,3 +216,112 @@ async def set_active_user(request: SetActiveUserRequest):
         "active_user_id": request.user_id,
         "message": f"Active user set to: {user_doc['nome']}"
     }
+
+
+@router.post("/ai-extract", response_model=AIExtractResponse)
+async def extract_profile_with_ai(request: AIExtractRequest):
+    """
+    Extract structured profile data from natural language text using AI.
+    
+    Users can paste their CV, LinkedIn summary, or describe their background naturally.
+    The AI will extract:
+    - Work experiences
+    - Education
+    - Skills
+    - Languages
+    """
+    logger.info(f"🤖 AI extraction requested ({len(request.text)} chars)")
+    
+    # Build extraction prompt
+    prompt = f"""You are a professional CV parser. Extract structured profile information from the text below.
+
+CRITICAL RULES:
+1. Return ONLY valid JSON, NO explanations or additional text
+2. If information is missing, use empty arrays
+3. Dates format: "Month YYYY - Month YYYY" or "YYYY - YYYY"
+4. Extract ALL skills mentioned (technologies, tools, methodologies)
+5. For experiences: company, role, period, description, technologies, achievements
+
+OUTPUT FORMAT (EXACT JSON):
+{{
+    "experiencias": [
+        {{
+            "empresa": "Company name",
+            "cargo": "Job title",
+            "periodo": "Period",
+            "descricao": "Brief description",
+            "tecnologias": ["Tech1", "Tech2"],
+            "realizacoes": ["Achievement 1", "Achievement 2"]
+        }}
+    ],
+    "educacao": [
+        {{
+            "instituicao": "Institution name",
+            "curso": "Degree/Course",
+            "periodo": "Period"
+        }}
+    ],
+    "habilidades": ["Skill1", "Skill2"],
+    "idiomas": [
+        {{
+            "idioma": "Language",
+            "nivel": "Proficiency level"
+        }}
+    ]
+}}
+
+TEXT TO PARSE:
+{request.text}
+
+JSON OUTPUT:"""
+
+    try:
+        # Call LLM (using local Llama to avoid API costs)
+        llm_response = await llm_router.generate(
+            prompt=prompt,
+            model="llama3.1:8b",  # Use local Llama (no cost!)
+            temperature=0.3  # Low temperature for structured output
+        )
+        
+        logger.info(f"🤖 LLM response: {llm_response[:200]}...")
+        
+        # Clean response (sometimes LLM adds markdown)
+        cleaned_response = llm_response.strip()
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]
+        cleaned_response = cleaned_response.strip()
+        
+        # Parse JSON
+        extracted_data = json.loads(cleaned_response)
+        
+        # Validate and convert to schema objects
+        experiencias = [Experience(**exp) for exp in extracted_data.get("experiencias", [])]
+        educacao = [Education(**edu) for edu in extracted_data.get("educacao", [])]
+        habilidades = extracted_data.get("habilidades", [])
+        idiomas = [Language(**lang) for lang in extracted_data.get("idiomas", [])]
+        
+        logger.info(f"✅ Extracted: {len(experiencias)} exp, {len(educacao)} edu, {len(habilidades)} skills")
+        
+        return AIExtractResponse(
+            experiencias=experiencias,
+            educacao=educacao,
+            habilidades=habilidades,
+            idiomas=idiomas,
+            success=True,
+            message=f"Extraído: {len(experiencias)} experiências, {len(educacao)} formações, {len(habilidades)} habilidades"
+        )
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ JSON parse error: {e}")
+        logger.error(f"LLM response was: {llm_response}")
+        raise HTTPException(
+            500,
+            f"Erro ao processar resposta da IA. Por favor, tente novamente ou forneça mais detalhes."
+        )
+    except Exception as e:
+        logger.error(f"❌ AI extraction error: {e}")
+        raise HTTPException(500, f"Erro na extração: {str(e)}")
