@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Usuários</title>
+    <link rel="stylesheet" href="user-management.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Gerenciamento de Usuários</h1>
+            <button id="add-user-btn" class="btn-primary">
+                <span>+</span> Adicionar Usuário
+            </button>
+        </header>
+
+        <div class="users-grid" id="users-grid">
+            <!-- User cards will be dynamically inserted here -->
+            <div class="loading">Carregando usuários...</div>
+        </div>
+
+        <!-- Add/Edit User Modal -->
+        <div id="user-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title">Adicionar Usuário</h2>
+                    <button class="close-btn" id="close-modal">&times;</button>
+                </div>
+                
+                <form id="user-form">
+                    <input type="hidden" id="user-id">
+                    
+                    <div class="form-section">
+                        <h3>Informações Básicas</h3>
+                        
+                        <div class="form-group">
+                            <label for="profile-name">Nome do Perfil *</label>
+                            <input type="text" id="profile-name" required 
+                                   placeholder="ex: leonardo, maria, joao">
+                            <small>Identificador único (letras minúsculas, sem espaços)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="nome">Nome Completo *</label>
+                            <input type="text" id="nome" required 
+                                   placeholder="ex: Leonardo Valões Novaes Ribeiro">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cargo-atual">Cargo Atual *</label>
+                            <input type="text" id="cargo-atual" required 
+                                   placeholder="ex: Desenvolvedor Full-Stack">
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Contato</h3>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email">Email *</label>
+                                <input type="email" id="email" required 
+                                       placeholder="email@exemplo.com">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="telefone">Telefone *</label>
+                                <input type="tel" id="telefone" required 
+                                       placeholder="(00) 00000-0000">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="linkedin">LinkedIn *</label>
+                                <input type="text" id="linkedin" required 
+                                       placeholder="linkedin.com/seu-perfil">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="github">GitHub</label>
+                                <input type="text" id="github" 
+                                       placeholder="github.com/seu-usuario">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Localização</h3>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cidade">Cidade *</label>
+                                <input type="text" id="cidade" required 
+                                       placeholder="ex: São Paulo">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="estado">Estado *</label>
+                                <input type="text" id="estado" required 
+                                       placeholder="ex: São Paulo">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancel-btn">Cancelar</button>
+                        <button type="submit" class="btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="user-management.js"></script>
+</body>
+</html>
