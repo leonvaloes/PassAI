@@ -10,9 +10,10 @@
     <div class="container">
         <header>
             <h1>Gerenciamento de Usuários</h1>
-            <button id="add-user-btn" class="btn-primary">
-                <span>+</span> Adicionar Usuário
-            </button>
+            <div class="window-controls">
+                <button id="add-user-btn" class="btn-primary">+ Adicionar Usuário</button>
+                <button class="btn-close-app" onclick="window.close()" title="Fechar Aplicativo">×</button>
+            </div>
         </header>
 
         <div class="users-grid" id="users-grid">
@@ -104,32 +105,122 @@
                         </div>
                     </div>
 
+
                     <div class="form-section">
                         <h3>Localização</h3>
-                        
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="cidade">Cidade *</label>
-                                <input type="text" id="cidade" required 
-                                       placeholder="ex: São Paulo">
+                                <input type="text" id="cidade" required placeholder="Cidade">
                             </div>
-
                             <div class="form-group">
                                 <label for="estado">Estado *</label>
-                                <input type="text" id="estado" required 
-                                       placeholder="ex: São Paulo">
+                                <input type="text" id="estado" required placeholder="UF" maxlength="2">
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" id="cancel-btn">Cancelar</button>
-                        <button type="submit" class="btn-primary">Salvar</button>
+                    <!-- Dynamic Sections -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3>Experiências Profissionais</h3>
+                            <button type="button" class="btn-sm btn-outline" id="add-exp-btn">+ Adicionar</button>
+                        </div>
+                        <div id="experiences-list" class="dynamic-list"></div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3>Formação Acadêmica</h3>
+                            <button type="button" class="btn-sm btn-outline" id="add-edu-btn">+ Adicionar</button>
+                        </div>
+                        <div id="education-list" class="dynamic-list"></div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3>Habilidades</h3>
+                            <div class="add-skill-control">
+                                <input type="text" id="new-skill-input" placeholder="Nova habilidade..." class="sm-input">
+                                <button type="button" class="btn-sm btn-outline" id="add-skill-btn">Adicionar</button>
+                            </div>
+                        </div>
+                        <div id="skills-list" class="skills-container"></div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3>Idiomas</h3>
+                            <button type="button" class="btn-sm btn-outline" id="add-lang-btn">+ Adicionar</button>
+                        </div>
+                        <div id="languages-list" class="dynamic-list"></div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="cancel-btn" id="cancel-btn">Cancelar</button>
+                        <button type="submit" class="save-btn" id="submit-btn">Criar Perfil</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <!-- Templates for Dynamic Items -->
+    <template id="exp-template">
+        <div class="dynamic-item card-item">
+            <button type="button" class="remove-btn" title="Remover">&times;</button>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Empresa</label>
+                    <input type="text" class="exp-empresa" placeholder="Empresa">
+                </div>
+                <div class="form-group">
+                    <label>Cargo</label>
+                    <input type="text" class="exp-cargo" placeholder="Cargo">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Período</label>
+                <input type="text" class="exp-periodo" placeholder="Ex: Jan 2020 - Atual">
+            </div>
+            <div class="form-group">
+                <label>Descrição</label>
+                <textarea class="exp-descricao" rows="6" placeholder="Descreva suas atividades detalhadamente..."></textarea>
+            </div>
+        </div>
+    </template>
+
+    <template id="edu-template">
+        <div class="dynamic-item card-item">
+            <button type="button" class="remove-btn" title="Remover">&times;</button>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Instituição</label>
+                    <input type="text" class="edu-instituicao" placeholder="Instituição">
+                </div>
+                <div class="form-group">
+                    <label>Curso</label>
+                    <input type="text" class="edu-curso" placeholder="Curso/Grau">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Período</label>
+                <input type="text" class="edu-periodo" placeholder="Ex: 2018 - 2022">
+            </div>
+        </div>
+    </template>
+
+    <template id="lang-template">
+        <div class="dynamic-item card-item form-row">
+            <button type="button" class="remove-btn" title="Remover">&times;</button>
+            <div class="form-group flex-grow">
+                <input type="text" class="lang-idioma" placeholder="Idioma">
+            </div>
+            <div class="form-group">
+                <input type="text" class="lang-nivel" placeholder="Nível (ex: Fluente)">
+            </div>
+        </div>
+    </template>
 
     <script src="user-management.js"></script>
 </body>

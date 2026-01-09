@@ -218,6 +218,20 @@ async def set_active_user(request: SetActiveUserRequest):
     }
 
 
+@router.post("/test-ai", response_model=AIExtractResponse)
+async def test_ai_endpoint(request: AIExtractRequest):
+    """Test endpoint to verify schema works without LLM"""
+    logger.info(f"TEST: Received {len(request.text)} chars")
+    return AIExtractResponse(
+        experiencias=[],
+        educacao=[],
+        habilidades=["test"],
+        idiomas=[],
+        success=True,
+        message="Test successful"
+    )
+
+
 @router.post("/ai-extract", response_model=AIExtractResponse)
 async def extract_profile_with_ai(request: AIExtractRequest):
     """
@@ -231,60 +245,72 @@ async def extract_profile_with_ai(request: AIExtractRequest):
     - Languages
     """
     logger.info(f"🤖 AI extraction requested ({len(request.text)} chars)")
+    logger.info(f"📝 Request type: {type(request)}, text type: {type(request.text)}")
     
     # Build extraction prompt
-    prompt = f"""You are a professional CV parser. Extract structured profile information from the text below.
+    logger.info("📝 Building prompt...")
+    prompt = f"""EXTRACT DATA FROM CV AND RETURN ONLY JSON.
+CRITICAL: FOR DESCRIPTIONS, YOU MUST COPY THE TEXT EXACTLY AS APPEARS IN THE INPUT. DO NOT SUMMARIZE. DO NOT OMIT DETAILS.
+NO EXPLANATIONS. NO MARKDOWN. JUST JSON.
 
-CRITICAL RULES:
-1. Return ONLY valid JSON, NO explanations or additional text
-2. If information is missing, use empty arrays
-3. Dates format: "Month YYYY - Month YYYY" or "YYYY - YYYY"
-4. Extract ALL skills mentioned (technologies, tools, methodologies)
-5. For experiences: company, role, period, description, technologies, achievements
-
-OUTPUT FORMAT (EXACT JSON):
+Output this exact JSON structure with extracted data:
 {{
     "experiencias": [
         {{
             "empresa": "Company name",
             "cargo": "Job title",
             "periodo": "Period",
-            "descricao": "Brief description",
+            "descricao": "COPY VERBATIM the full description including all bullet points. DO NOT SUMMARIZE. DO NOT SHORTEN. Capture every detail.",
             "tecnologias": ["Tech1", "Tech2"],
-            "realizacoes": ["Achievement 1", "Achievement 2"]
+            "realizacoes": ["Achievement1"]
         }}
     ],
     "educacao": [
         {{
-            "instituicao": "Institution name",
-            "curso": "Degree/Course",
+            "instituicao": "Institution",
+            "curso": "Course/Degree",
             "periodo": "Period"
         }}
     ],
-    "habilidades": ["Skill1", "Skill2"],
+    "habilidades": ["Skill1", "Skill2", "Skill3"],
     "idiomas": [
         {{
             "idioma": "Language",
-            "nivel": "Proficiency level"
+            "nivel": "Level"
         }}
     ]
 }}
 
-TEXT TO PARSE:
+CV TEXT:
 {request.text}
 
-JSON OUTPUT:"""
+RETURN ONLY THE JSON OBJECT ABOVE WITH REAL DATA. START WITH {{ AND END WITH }}. NO OTHER TEXT.
+JSON:"""
 
     try:
-        # Create fresh LLM router instance to avoid state issues
-        llm = LLMRouter()
+        logger.info("🤖 Calling Ollama directly for extraction...")
         
-        # Call LLM (using configured model - Ollama or OpenAI)
-        llm_response = llm.generate(  # NOT async, don't use await
-            prompt=prompt,
-            temperature=0.3,  # Low temperature for structured output
-            max_tokens=2000  # Enough for detailed extractions
+        # Call Ollama API directly (LLMRouter.generate() has bugs with conversation_history)
+        import requests
+        ollama_response = requests.post(
+            'http://localhost:11434/api/generate',
+            json={
+                'model': 'llama3.1:8b',
+                'prompt': prompt,
+                'stream': False,
+                'options': {
+                    'temperature': 0.2,
+                    'num_predict': 9000
+                }
+            },
+            timeout=60
         )
+        
+        if ollama_response.status_code != 200:
+            logger.error(f"❌ Ollama returned {ollama_response.status_code}")
+            raise HTTPException(500, "Erro ao chamar Ollama")
+        
+        llm_response = ollama_response.json().get('response', '')
         
         if not llm_response or not isinstance(llm_response, str):
             logger.error(f"❌ Invalid LLM response type: {type(llm_response)}")

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PassAI - Selecionar Usuário</title>
+    <link rel="stylesheet" href="user-selection.css">
+    <style>
+        .drag-bar {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 32px;
+            -webkit-app-region: drag;
+            display: flex;
+            justify-content: flex-end;
+            padding: 4px;
+            box-sizing: border-box;
+            z-index: 100;
+        }
+        .btn-close {
+            -webkit-app-region: no-drag;
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 1.5rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 12px;
+            border-radius: 4px;
+        }
+        .btn-close:hover { 
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444; 
+        }
+    </style>
+</head>
+<body>
+    <div class="drag-bar">
+        <button class="btn-close" onclick="window.close()" title="Fechar">×</button>
+    </div>
+    
+    <div class="container">
+        <h2>Quem está usando?</h2>
+        <div id="users-list" class="users-list">
+            <div style="color: #64748b; font-size: 0.9rem;">Carregando...</div>
+        </div>
+        <button id="manage-btn">Gerenciar Perfis</button>
+    </div>
+    
+    <script src="user-selection.js"></script>
+</body>
+</html>

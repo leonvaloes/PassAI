@@ -16,6 +16,10 @@ function openJobSearch() {
   window.electronAPI.send('open-job-search');
 }
 
+function openUserManagement() {
+  window.location.href = 'windows/user-management/user-management.html';
+}
+
 
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');

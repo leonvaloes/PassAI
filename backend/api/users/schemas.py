@@ -107,9 +107,9 @@ class AIExtractRequest(BaseModel):
 
 class AIExtractResponse(BaseModel):
     """Schema for AI extraction response"""
-    experiencias: List[Experience] = []
-    educacao: List[Education] = []
-    habilidades: List[str] = []
-    idiomas: List[Language] = []
+    experiencias: List[Experience] = Field(default_factory=list)
+    educacao: List[Education] = Field(default_factory=list)
+    habilidades: List[str] = Field(default_factory=list)
+    idiomas: List[Language] = Field(default_factory=list)
     success: bool = True
     message: Optional[str] = None

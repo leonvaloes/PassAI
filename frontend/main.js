@@ -5,6 +5,7 @@ let mainWindow;
 let resumeWindow = null; // Resume Generator window
 let jobsWindow = null; // Jobs window
 let searchProfilesWindow = null; // Search Profiles window
+let selectionWindow = null; // Startup User Selection window
 
 function createWindow() {
   const { screen } = require('electron');
@@ -55,6 +56,33 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+}
+
+// User Selection Window (Startup)
+function createSelectionWindow() {
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+
+  selectionWindow = new BrowserWindow({
+    width: 600,
+    height: 500,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000', // Transparent for rounded corners
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  selectionWindow.loadFile('renderer/windows/user-selection/user-selection.html');
+  
+  selectionWindow.on('closed', () => {
+    selectionWindow = null;
   });
 }
 
@@ -186,8 +214,34 @@ ipcMain.on('open-job-search', () => {
 });
 
 
-app.on('ready', () => {
+// IPC Handler for User Selection Launch
+ipcMain.on('user-selected-launch', () => {
+  if (selectionWindow) {
+    selectionWindow.close();
+  }
   createWindow();
+});
+
+ipcMain.on('open-user-manager-setup', () => {
+  if (selectionWindow) {
+    selectionWindow.close();
+  }
+  // Create main window but navigate to user management
+  createWindow();
+  // We need to wait for window to be ready to navigate?
+  // Or just set a flag? 
+  // Let's use a timeout for simplicity or IPC
+  setTimeout(() => {
+    if (mainWindow) {
+        mainWindow.loadFile('renderer/windows/user-management/user-management.html');
+        // Ensure it is opaque and visible
+        mainWindow.setOpacity(1);
+    }
+  }, 500);
+});
+
+app.on('ready', () => {
+  createSelectionWindow();
   
   // Global hotkeys
   const registered = {

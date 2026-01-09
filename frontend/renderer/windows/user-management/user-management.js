@@ -18,13 +18,14 @@ const modalTitle = document.getElementById('modal-title');
 document.addEventListener('DOMContentLoaded', () => {
     loadUsers();
     setupEventListeners();
+    setupDynamicListListeners();
 });
 
 function setupEventListeners() {
-    addUserBtn.addEventListener('click', () => openModal());
-    closeModalBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
-    userForm.addEventListener('submit', handleSubmit);
+    if (addUserBtn) addUserBtn.addEventListener('click', () => openModal());
+    if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    if (userForm) userForm.addEventListener('submit', handleSubmit);
     
     // AI extraction
     const toggleAIBtn = document.getElementById('toggle-ai-btn');
@@ -32,15 +33,20 @@ function setupEventListeners() {
     
     if (toggleAIBtn) {
         toggleAIBtn.addEventListener('click', toggleAIPanel);
+    } else {
+        console.warn('Toggle AI button not found');
     }
+    
     if (extractAIBtn) {
         extractAIBtn.addEventListener('click', extractWithAI);
     }
     
     // Close modal on outside click
-    userModal.addEventListener('click', (e) => {
-        if (e.target === userModal) closeModal();
-    });
+    if (userModal) {
+        userModal.addEventListener('click', (e) => {
+            if (e.target === userModal) closeModal();
+        });
+    }
 }
 
 // Load all users
@@ -60,16 +66,30 @@ async function loadUsers() {
 }
 
 // Render users grid
+// Render users grid
 function renderUsers() {
     if (users.length === 0) {
-        usersGrid.innerHTML = '<div class="loading">Nenhum usuário cadastrado</div>';
+        usersGrid.innerHTML = '<div class="loading">Nenhum usuário cadastrado. Clique em "Adicionar Usuário" para começar.</div>';
         return;
     }
     
     usersGrid.innerHTML = users.map(user => `
-        <div class="user-card ${user.id === activeUserId ? 'active' : ''}">
+        <div class="user-card ${user.id === activeUserId ? 'active' : ''}" 
+             onclick="handleCardClick(event, '${user.id}')"
+             title="${user.id === activeUserId ? 'Voltar para o Painel' : 'Selecionar este usuário'}"
+        >
             ${user.id === activeUserId ? '<span class="active-badge">✓ Ativo</span>' : ''}
             
+            <button class="card-menu-btn" onclick="toggleUserMenu(event, '${user.id}')" title="Opções">⋮</button>
+            <div id="menu-${user.id}" class="card-dropdown">
+                <button class="menu-item" onclick="handleMenuAction(event, 'edit', '${user.id}')">
+                    ✏️ Editar Perfil
+                </button>
+                <button class="menu-item delete" onclick="handleMenuAction(event, 'delete', '${user.id}')">
+                    🗑️ Excluir
+                </button>
+            </div>
+
             <div class="user-name">${user.nome}</div>
             <div class="user-email">${user.email}</div>
             
@@ -77,23 +97,59 @@ function renderUsers() {
                 <div><strong>Cargo:</strong> ${user.cargo_atual}</div>
                 <div><strong>Local:</strong> ${user.cidade}, ${user.estado}</div>
             </div>
-            
-            <div class="user-actions">
-                ${user.id !== activeUserId ? `
-                    <button class="btn-primary" onclick="setActiveUser('${user.id}')">
-                        Ativar
-                    </button>
-                ` : '<div style="flex:1"></div>'}
-                <button class="btn-secondary" onclick="editUser('${user.id}')">
-                    Editar
-                </button>
-                <button class="btn-danger" onclick="deleteUser('${user.id}', '${user.nome}')">
-                    Excluir
-                </button>
-            </div>
         </div>
     `).join('');
 }
+
+// Interaction Handlers
+function toggleUserMenu(e, userId) {
+    e.stopPropagation();
+    const menu = document.getElementById(`menu-${userId}`);
+    const isHidden = !menu.classList.contains('show');
+    
+    // Close all others
+    document.querySelectorAll('.card-dropdown').forEach(el => el.classList.remove('show'));
+    
+    if (isHidden) {
+        menu.classList.add('show');
+    }
+}
+
+async function handleCardClick(e, userId) {
+    // Check if clicked on menu
+    if (e.target.closest('.card-menu-btn') || e.target.closest('.card-dropdown')) return;
+    
+    try {
+        if (userId !== activeUserId) {
+            await setActiveUser(userId);
+        }
+        
+        // Navigate to main dashboard (HUD)
+        window.location.href = '../../index.html';
+    } catch (error) {
+        console.error('Navigation error:', error);
+    }
+}
+
+function handleMenuAction(e, action, userId) {
+    e.stopPropagation();
+    // Close menu
+    document.querySelectorAll('.card-dropdown').forEach(el => el.classList.remove('show'));
+    
+    if (action === 'edit') {
+        editUser(userId);
+    } else if (action === 'delete') {
+        const user = users.find(u => u.id === userId);
+        deleteUser(userId, user ? user.nome : 'Usuário');
+    }
+}
+
+// Close menus when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.card-menu-btn')) {
+        document.querySelectorAll('.card-dropdown').forEach(el => el.classList.remove('show'));
+    }
+});
 
 // Open modal (add or edit)
 function openModal(user = null) {
@@ -112,9 +168,27 @@ function openModal(user = null) {
         document.getElementById('github').value = user.github || '';
         document.getElementById('cidade').value = user.cidade;
         document.getElementById('estado').value = user.estado;
+        
+        // Populate dynamic lists
+        clearDynamicLists();
+        (user.experiencias || []).forEach(exp => addExperienceItem(exp));
+        (user.educacao || []).forEach(edu => addEducationItem(edu));
+        (user.habilidades || []).forEach(skill => addSkillItem(skill));
+        (user.idiomas || []).forEach(lang => addLanguageItem(lang));
+        
     } else {
-        userForm.reset();
+        modalTitle.textContent = 'Novo Perfil';
+        submitBtn.textContent = 'Criar Perfil';
+        clearDynamicLists();
     }
+    
+    // Reset AI input and status
+    const aiStatus = document.getElementById('ai-status');
+    if (aiStatus) {
+        aiStatus.className = 'ai-status hidden';
+        aiStatus.textContent = '';
+    }
+    document.getElementById('ai-input').value = '';
     
     userModal.classList.remove('hidden');
 }
@@ -139,10 +213,24 @@ async function handleSubmit(e) {
         github: document.getElementById('github').value.trim() || null,
         cidade: document.getElementById('cidade').value.trim(),
         estado: document.getElementById('estado').value.trim(),
-        experiencias: [],
-        educacao: [],
-        habilidades: [],
-        idiomas: []
+        
+        // Collect data from dynamic lists
+        experiencias: Array.from(document.querySelectorAll('#experiences-list .dynamic-item')).map(item => ({
+            empresa: item.querySelector('.exp-empresa').value.trim(),
+            cargo: item.querySelector('.exp-cargo').value.trim(),
+            periodo: item.querySelector('.exp-periodo').value.trim(),
+            descricao: item.querySelector('.exp-descricao').value.trim()
+        })),
+        educacao: Array.from(document.querySelectorAll('#education-list .dynamic-item')).map(item => ({
+            instituicao: item.querySelector('.edu-instituicao').value.trim(),
+            curso: item.querySelector('.edu-curso').value.trim(),
+            periodo: item.querySelector('.edu-periodo').value.trim()
+        })),
+        habilidades: Array.from(document.querySelectorAll('#skills-list .skill-name')).map(span => span.textContent),
+        idiomas: Array.from(document.querySelectorAll('#languages-list .dynamic-item')).map(item => ({
+            idioma: item.querySelector('.lang-idioma').value.trim(),
+            nivel: item.querySelector('.lang-nivel').value.trim()
+        }))
     };
     
     try {
@@ -199,6 +287,96 @@ function editUser(userId) {
     if (user) openModal(user);
 }
 
+// Event Listeners for Dynamic Lists
+// Event Listeners for Dynamic Lists
+function setupDynamicListListeners() {
+    const addExpBtn = document.getElementById('add-exp-btn');
+    const addEduBtn = document.getElementById('add-edu-btn');
+    const addLangBtn = document.getElementById('add-lang-btn');
+    const addSkillBtn = document.getElementById('add-skill-btn');
+
+    if (addExpBtn) addExpBtn.addEventListener('click', () => addExperienceItem());
+    if (addEduBtn) addEduBtn.addEventListener('click', () => addEducationItem());
+    if (addLangBtn) addLangBtn.addEventListener('click', () => addLanguageItem());
+    
+    if (addSkillBtn) {
+        addSkillBtn.addEventListener('click', () => {
+            const input = document.getElementById('new-skill-input');
+            if (input && input.value.trim()) {
+                addSkillItem(input.value.trim());
+                input.value = '';
+            }
+        });
+    }
+
+    // Remove buttons delegation
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-btn')) {
+            e.target.closest('.dynamic-item').remove();
+        }
+        if (e.target.classList.contains('skill-remove')) {
+            e.target.closest('.skill-tag').remove();
+        }
+    });
+}
+
+function addExperienceItem(data = null) {
+    const template = document.getElementById('exp-template');
+    const clone = template.content.cloneNode(true);
+    
+    if (data) {
+        clone.querySelector('.exp-empresa').value = data.empresa || '';
+        clone.querySelector('.exp-cargo').value = data.cargo || '';
+        clone.querySelector('.exp-periodo').value = data.periodo || '';
+        clone.querySelector('.exp-descricao').value = data.descricao || '';
+    }
+    
+    document.getElementById('experiences-list').appendChild(clone);
+}
+
+function addEducationItem(data = null) {
+    const template = document.getElementById('edu-template');
+    const clone = template.content.cloneNode(true);
+    
+    if (data) {
+        clone.querySelector('.edu-instituicao').value = data.instituicao || '';
+        clone.querySelector('.edu-curso').value = data.curso || '';
+        clone.querySelector('.edu-periodo').value = data.periodo || '';
+    }
+    
+    document.getElementById('education-list').appendChild(clone);
+}
+
+function addLanguageItem(data = null) {
+    const template = document.getElementById('lang-template');
+    const clone = template.content.cloneNode(true);
+    
+    if (data) {
+        clone.querySelector('.lang-idioma').value = data.idioma || '';
+        clone.querySelector('.lang-nivel').value = data.nivel || '';
+    }
+    
+    document.getElementById('languages-list').appendChild(clone);
+}
+
+function addSkillItem(skill) {
+    const container = document.getElementById('skills-list');
+    const skillTag = document.createElement('div');
+    skillTag.className = 'skill-tag';
+    skillTag.innerHTML = `
+        <span class="skill-name">${skill}</span>
+        <span class="skill-remove">&times;</span>
+    `;
+    container.appendChild(skillTag);
+}
+
+function clearDynamicLists() {
+    document.getElementById('experiences-list').innerHTML = '';
+    document.getElementById('education-list').innerHTML = '';
+    document.getElementById('skills-list').innerHTML = '';
+    document.getElementById('languages-list').innerHTML = '';
+}
+
 // Delete user
 async function deleteUser(userId, userName) {
     if (!confirm(`Tem certeza que deseja excluir o usuário "${userName}"?`)) {
@@ -220,6 +398,7 @@ async function deleteUser(userId, userName) {
 
 // AI Profile Fill Functions
 function toggleAIPanel() {
+    console.log('Toggling AI Panel');
     const aiPanel = document.getElementById('ai-panel');
     const toggleBtn = document.getElementById('toggle-ai-btn');
     
@@ -263,18 +442,32 @@ async function extractWithAI() {
         
         const data = await response.json();
         
-        // Auto-fill would go here  (experiencias, educacao, habilidades)
-        // For now, just show success since we only have basic fields in form
-        statusDiv.className = 'ai-status success';
-        statusDiv.textContent = `✅ ${data.message || 'Dados extraídos com sucesso!'}`;
-       statusDiv.textContent += `\n📊 ${data.experiencias.length} exp, ${data.educacao.length} edu, ${data.habilidades.length} skills`;
+        // Populate dynamic lists with AI data
+        clearDynamicLists(); // Clear existing to avoid duplicates or keep? Thinking clear is better for "Fill" action
         
-        console.log('Extracted data:', data);
+        if (data.experiencias) data.experiencias.forEach(exp => addExperienceItem(exp));
+        if (data.educacao) data.educacao.forEach(edu => addEducationItem(edu));
+        if (data.habilidades) data.habilidades.forEach(skill => addSkillItem(skill));
+        if (data.idiomas) data.idiomas.forEach(lang => addLanguageItem(lang));
+
+        statusDiv.className = 'ai-status success';
+        statusDiv.innerHTML = `
+            ✅ <strong>Dados extraídos e preenchidos!</strong><br>
+            📄 ${data.experiencias.length} experiências<br>
+            🎓 ${data.educacao.length} formações<br>
+            ⚡ ${data.habilidades.length} habilidades<br>
+            <small>Revise os campos abaixo e edite se necessário.</small>
+        `;
+        
+        console.log('AI data populated to form');
         
     } catch (error) {
+        console.error('AI Error:', error);
         statusDiv.className = 'ai-status error';
-        statusDiv.textContent = `❌ ${error.message}`;
+        statusDiv.textContent = `❌ ${error.message || 'Erro ao extrair dados. Tente novamente.'}`;
     } finally {
+        // Re-enable button
         extractBtn.disabled = false;
+        extractBtn.innerHTML = '🤖 Extrair Dados';
     }
 }

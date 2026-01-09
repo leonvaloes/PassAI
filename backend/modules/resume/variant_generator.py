@@ -281,10 +281,14 @@ Você é um especialista em currículos ATS e recrutador sênior.
         # Wait, I need to see where 'prompt' variable is fully constructed.
         # It's constructed via f-string assignment usually.
         # Let me see the code around lines 220-300 in the file first.
+        # Extract valid companies list for strict validation
+        valid_companies = [exp.get('empresa', '').strip() for exp in base_resume.get('experiencias', []) if exp.get('empresa')]
+        valid_companies_str = ", ".join([f'"{c}"' for c in valid_companies])
+
         prompt = f"""
 Você é um especialista em otimização de currículos para ATS.
 
-VAGA:
+VAGA ALVO:
 - Cargo: {job.cargo}
 - Empresa: {job.empresa}
 - ATS: {job.ats_detectado.value}
@@ -297,23 +301,33 @@ DESCRIÇÃO COMPLETA DA VAGA (USE ESTAS FRASES EXATAS NOS BULLETS):
 CURRÍCULO COMPLETO DO CANDIDATO (USE ESTAS INFORMAÇÕES REAIS):
 {base_resume_json}
 
+EMPRESAS VÁLIDAS (PERMITIDAS): [{valid_companies_str}]
+
 {project_mapping}
 
 CONHECIMENTO DE RH (RAG):
 {rag_context}
 
 TAREFA:
-Gere um currículo otimizado para esta vaga. Retorne JSON:
+Reescreva o currículo para aumentar a chance de passar no ATS da vaga acima, MAS RESPEITANDO RIGOROSAMENTE O HISTÓRICO.
+REGRA DE OURO (ALUCINAÇÃO ZERO):
+1. USE APENAS AS EMPRESAS LISTADAS EM "EMPRESAS VÁLIDAS".
+2. SE A EMPRESA DA VAGA ("{job.empresa}") NÃO ESTIVER NA LISTA DE VÁLIDAS, NÃO A ADICIONE NAS EXPERIÊNCIAS.
+3. NÃO MUDE OS CARGOS DRASTICAMENTE (Ex: "Auxiliar" virar "Gerente").
+
+SAÍDA JSON ESPERADA:
 
 {{
-  "resumo": "Profissional [Senioridade] em [Área da vaga: Engenharia de Software back-end, Desenvolvimento Full-Stack, etc.] com [X]+ anos de experiência atuando em desenvolvimento, sustentação e entrega de microsserviços para [contexto: ambientes corporativos, soluções de pagamento, etc.]. Expertise em [LISTE TODAS as tecnologias relevantes: Java, Spring Boot, Microservices, AWS, APIs REST, mensageria (Kafka/RabbitMQ), bancos relacionais e não relacionais, testes unitários, Git, CI/CD, observabilidade com Kibana/Grafana, etc.].",
+  "resumo": "Profissional [Senioridade] em [Área da vaga (exemplo : Engenharia de Software back-end, Desenvolvimento Full-Stack, auxiliar administrativo, auxiliar de escritório, enfermeira, etc.)] com [X]+ anos de experiência atuando em desenvolvimento, sustentação e entrega de microsserviços para [contexto: ambientes corporativos, soluções de pagamento, etc.]. Expertise em [LISTE TODAS as tecnologias relevantes da vaga, exemplo: Java, Python, Spring Boot, Microservices, AWS, APIs REST, mensageria (Kafka/RabbitMQ), bancos relacionais e não relacionais, testes unitários, Git, CI/CD, observabilidade com Kibana/Grafana, excel, powerpoint, power bi, etc].",
   
   "habilidades": [
     "Habilidade 1 (da vaga)",
     "Habilidade 2 (da vaga)",
     "Habilidade 3",
     "Habilidade 4",
-    "Habilidade 5"
+    "Habilidade 5",
+    "Habilidade 6",
+    "Habilidade 7"
   ],
   
   "experiencias": [
@@ -332,7 +346,15 @@ Gere um currículo otimizado para esta vaga. Retorne JSON:
 
 REGRAS OBRIGATÓRIAS:
 
-1. **ESTRUTURA DOS BULLETS**:
+1. **⛔ FIDELIDADE ABSOLUTA A EMPRESAS E PERÍODOS (CRÍTICO)**:
+   - **JAMAIS INVENTE UMA EMPRESA NOVA**.
+   - **JAMAIS INVENTE UM PERÍODO DE TRABALHO**.
+   - Use ESTRITAMENTE as empresas e datas listadas no currículo original.
+   - Se o candidato é "Auxiliar de Logística", você NÃO PODE transformá-lo em "Desenvolvedor Sênior" numa empresa que ele nunca trabalhou.
+   - Se a experiência não existe no input, NÃO A CRIE.
+   - **O QUE PODE MUDAR**: Apenas a **descrição** das atividades (bullets) e **tecnologias** usadas DENTRO das empresas reais, para alinhar com a vaga target.
+
+2. **ESTRUTURA DOS BULLETS**:
    - Cada bullet deve ter 5-8 frases no máximo (500 caracteres)
    - Comece com o NOME DO PROJETO/SISTEMA
    - Descreva o QUE foi feito + RESULTADO
