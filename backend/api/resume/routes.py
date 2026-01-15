@@ -526,38 +526,20 @@ async def generate_more_variants(job_id: str, count: int = 3):
             'habilidades': user_profile['habilidades']
         }
         
-        # Generate exactly N variants using the internal batch method
+        # Generate exactly N variants using generate() with initial_count
         try:
-            generated = []
+            generated = variant_generator.generate(
+                job=job,
+                base_resume=base_resume,
+                initial_count=count  # This will stop after first batch
+            )
             
-            # Temporarily override batch_size to generate exactly what user wants
-            original_batch_size = variant_generator.batch_size
-            variant_generator.batch_size = count
-            
-            try:
-                batch = variant_generator._generate_batch(
-                    job=job,
-                    base_resume=base_resume,
-                    round_num=1
-                )
+            # Save each variant to database
+            for i, variant in enumerate(generated, 1):
+                variant_id = db.insert_variant(variant.dict(by_alias=True, exclude={'id'}))
+                variant.id = variant_id
+                logger.info(f"Generated variant {i}/{count}: Score {variant.ats_score:.1f}")
                 
-                # Score and save each variant
-                for variant in batch:
-                    score = variant_generator.ats_sim.score(variant, job)
-                    variant.ats_score = score
-                    variant.ats_status = variant_generator._classify_status(score)
-                    
-                    # Save to MongoDB
-                    variant_id = db.insert_variant(variant.dict(by_alias=True, exclude={'id'}))
-                    variant.id = variant_id
-                    
-                    generated.append(variant)
-                    logger.info(f"Generated variant {len(generated)}/{count}: Score {score:.1f}")
-                    
-            finally:
-                # Restore original batch_size
-                variant_generator.batch_size = original_batch_size
-                    
         except Exception as e:
             logger.error(f"Variant generation failed: {e}", exc_info=True)
             raise HTTPException(

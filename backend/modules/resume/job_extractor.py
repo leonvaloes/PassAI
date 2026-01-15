@@ -235,6 +235,10 @@ JSON:
             try:
                 job_data = json.loads(json_match.group())
                 logger.info("✅ LLM parsing successful")
+                
+                # Validate and ensure required fields have non-null values
+                job_data = self._validate_job_data(job_data)
+                
                 return job_data
             except json.JSONDecodeError as e:
                 logger.warning(f"JSON parse failed: {e}")
@@ -242,6 +246,39 @@ JSON:
                 return self._fallback_parse(text)
         
         return self._fallback_parse(text)
+    
+    def _validate_job_data(self, job_data: Dict) -> Dict:
+        """
+        Validate job_data and ensure required fields have non-null values
+        
+        Args:
+            job_data: Raw job data from LLM
+            
+        Returns:
+            Validated job data with defaults for null/missing fields
+        """
+        # Required string fields with defaults
+        string_defaults = {
+            "cargo": "Vaga não especificada",
+            "empresa": "Empresa não especificada",
+            "local": "Não especificado",
+            "modalidade": "Não especificado",
+            "senioridade": "Não especificado"
+        }
+        
+        # Apply defaults for null or missing required fields
+        for field, default in string_defaults.items():
+            if not job_data.get(field):  # Handles None, empty string, or missing
+                logger.warning(f"Field '{field}' is null/empty, using default: {default}")
+                job_data[field] = default
+        
+        # Ensure list fields are never null
+        list_fields = ["beneficios", "requisitos_tecnicos", "requisitos_comportamentais"]
+        for field in list_fields:
+            if job_data.get(field) is None:
+                job_data[field] = []
+        
+        return job_data
     
     def _fallback_parse(self, text: str) -> Dict:
         """Fallback parser using regex patterns"""

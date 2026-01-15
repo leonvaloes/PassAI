@@ -153,12 +153,17 @@ class VariantGenerator:
                         logger.info(f"  ? {q}")
             
             # Callback for progress
-            # Callback for progress
             if callback:
                 try:
                     callback(round_num, all_variants, approved_count)
                 except Exception as e:
                     logger.error(f"Callback failed: {e}")
+            
+            # CRITICAL FIX: If user specified initial_count, stop after first batch
+            # Don't continue iterating to achieve approval thresholds
+            if initial_count is not None and initial_count > 0:
+                logger.info(f"✅ Initial count mode: Generated {total_generated} variant(s) as requested. Stopping.")
+                break
             
             round_num += 1
         
@@ -175,6 +180,36 @@ class VariantGenerator:
         round_num: int
     ) -> List[ResumeVariant]:
         """Generate a batch of variants"""
+        
+        # CRITICAL: Clean base_resume skills BEFORE generation
+        # This prevents invalid skills from user profile propagating to CVs
+        if 'habilidades' in base_resume and isinstance(base_resume['habilidades'], list):
+            invalid_patterns = [
+                'requisito', 'habilidade', 'tecnologia', 'skill',
+                'vaga', 'prioridade', 'exemplo', 'etc', 'competência',
+                'conhecimento', 'área', 'domínio'
+            ]
+            
+            original_count = len(base_resume['habilidades'])
+            valid_base_skills = []
+            
+            for skill in base_resume['habilidades']:
+                skill_clean = skill.strip()
+                skill_lower = skill_clean.lower()
+                
+                # Skip if contains invalid patterns
+                if any(pattern in skill_lower for pattern in invalid_patterns):
+                    logger.warning(f"🧹 Cleaning base_resume: Removing invalid skill '{skill}'")
+                    continue
+                    
+                valid_base_skills.append(skill_clean)
+            
+            if len(valid_base_skills) < original_count:
+                logger.info(f"🧹 Base resume cleaned: {original_count} → {len(valid_base_skills)} skills")
+                base_resume['habilidades'] = valid_base_skills
+        
+        logger.info(f"Generating batch of {self.batch_size} variants (round {round_num})")
+        
         batch = []
         
         # Get RAG context
@@ -309,25 +344,51 @@ CONHECIMENTO DE RH (RAG):
 {rag_context}
 
 TAREFA:
-Reescreva o currículo para aumentar a chance de passar no ATS da vaga acima, MAS RESPEITANDO RIGOROSAMENTE O HISTÓRICO.
-REGRA DE OURO (ALUCINAÇÃO ZERO):
+Reescreva o currículo para MAXIMIZAR a chance de passar no ATS da vaga acima.
+
+REGRA DE OURO (EMPRESAS E PERÍODOS):
 1. USE APENAS AS EMPRESAS LISTADAS EM "EMPRESAS VÁLIDAS".
 2. SE A EMPRESA DA VAGA ("{job.empresa}") NÃO ESTIVER NA LISTA DE VÁLIDAS, NÃO A ADICIONE NAS EXPERIÊNCIAS.
 3. NÃO MUDE OS CARGOS DRASTICAMENTE (Ex: "Auxiliar" virar "Gerente").
 
+**IMPORTANTE - TECNOLOGIAS DA VAGA**:
+4. **VOCÊ DEVE MENCIONAR O MÁXIMO DE TECNOLOGIAS DA VAGA POSSÍVEL** no resumo e nas experiências.
+5. É PERMITIDO mencionar tecnologias da vaga MESMO QUE o candidato não tenha usado explicitamente (exemplo: se ele tem "APIs REST", você pode mencionar "GraphQL"; se tem "deploy manual", pode mencionar "CI/CD com Jenkins/GitHub Actions"; se tem experiência com cloud genérica, pode mencionar "AWS, Azure, GCP").
+6. **PRIORIZE TECNOLOGIAS LISTADAS NOS REQUISITOS DA VAGA** acima de tudo.
+
+**📝 SEÇÃO RESUMO - ESTRUTURA NARRATIVA (CRÍTICO)**:
+- **NÃO faça apenas lista de tecnologias!**
+- **ESTRUTURA OBRIGATÓRIA** (2 frases):
+  1. "Profissional [Senioridade] em [Cargo] com X+ anos de experiência **atuando em [CONTEXTO/DOMÍNIO]**."
+  2. "Expertise em [5-7 tecnologias PRINCIPAIS], com foco em [ÁREA/REALIZAÇÕES]."
+
+- **CONTEXTO/DOMÍNIO** - escolha baseado na vaga:
+  * Pagamentos: "desenvolvimento, sustentação e entrega de soluções de pagamento"
+  * Frontend: "desenvolvimento de interfaces web responsivas e performáticas"  
+  * Backend: "arquitetura e desenvolvimento de APIs escaláveis e microsserviços"
+  * Fullstack: "desenvolvimento end-to-end de aplicações web escaláveis"
+
+**EXEMPLO BOM**:
+"Profissional Pleno em Desenvolvimento Full-Stack com 2+ anos de experiência atuando em desenvolvimento e entrega de soluções web empresariais. Expertise em Java, Spring Boot, Angular, APIs RESTful e arquitetura de microserviços, com foco em alta disponibilidade."
+
+**EXEMPLO RUIM** (apenas lista - EVITAR):
+"Profissional Pleno com 2+ anos. Expertise em Angular, TypeScript, JavaScript, HTML5, CSS3, RxJS, NgRx..."
+
+
 SAÍDA JSON ESPERADA:
 
 {{
-  "resumo": "Profissional [Senioridade] em [Área da vaga (exemplo : Engenharia de Software back-end, Desenvolvimento Full-Stack, auxiliar administrativo, auxiliar de escritório, enfermeira, etc.)] com [X]+ anos de experiência atuando em desenvolvimento, sustentação e entrega de microsserviços para [contexto: ambientes corporativos, soluções de pagamento, etc.]. Expertise em [LISTE TODAS as tecnologias relevantes da vaga, exemplo: Java, Python, Spring Boot, Microservices, AWS, APIs REST, mensageria (Kafka/RabbitMQ), bancos relacionais e não relacionais, testes unitários, Git, CI/CD, observabilidade com Kibana/Grafana, excel, powerpoint, power bi, etc].",
+  "resumo": "Profissional [Senioridade] em [Área da vaga] com [X]+ anos de experiência. Expertise em [LISTE NO MÍNIMO 10-15 TECNOLOGIAS DA VAGA, priorizando as listadas em 'Requisitos Técnicos'. Exemplos: GraphQL, AWS, Docker, Kubernetes, CI/CD (Jenkins/GitHub Actions), Terraform, Microservices, APIs REST, RabbitMQ, Kafka, PostgreSQL, MongoDB, Redis, Elasticsearch, observabilidade (Kibana/Grafana/Prometheus), etc].",
   
   "habilidades": [
-    "Habilidade 1 (da vaga)",
-    "Habilidade 2 (da vaga)",
-    "Habilidade 3",
-    "Habilidade 4",
-    "Habilidade 5",
-    "Habilidade 6",
-    "Habilidade 7"
+    "Tecnologia 1 (DA VAGA - prioridade máxima)",
+    "Tecnologia 2 (DA VAGA)",
+    "Tecnologia 3 (DA VAGA)",
+    "Tecnologia 4 (DA VAGA)",
+    "Tecnologia 5 (DA VAGA)",
+    "Tecnologia 6 (DA VAGA)",
+    "Tecnologia 7 (DA VAGA)",
+    "Tecnologia 8 (DA VAGA)",
   ],
   
   "experiencias": [
@@ -337,8 +398,9 @@ SAÍDA JSON ESPERADA:
       "periodo": "Mês/Ano - Mês/Ano",
       "descricao": "Breve descrição do papel",
       "bullets": [
-        "Realizou X resultando em Y (métrica)",
-        "Desenvolveu Z usando [tecnologia da vaga]"
+        "Projeto X - Desenvolvi [contexto] usando [TECNOLOGIAS DA VAGA: GraphQL, AWS Lambda, etc], resultando em [métrica]",
+        "Sistema Y - Implementei [solução] com [TECNOLOGIAS DA VAGA: CI/CD, Docker, Kubernetes], melhorando [resultado]",
+        "Arquitetura Z - Contribuí para [contexto] utilizando [MAIS TECNOLOGIAS DA VAGA]"
       ]
     }}
   ]
@@ -346,13 +408,34 @@ SAÍDA JSON ESPERADA:
 
 REGRAS OBRIGATÓRIAS:
 
-1. **⛔ FIDELIDADE ABSOLUTA A EMPRESAS E PERÍODOS (CRÍTICO)**:
+1. **⛔ FIDELIDADE A EMPRESAS E PERÍODOS (CRÍTICO)**:
    - **JAMAIS INVENTE UMA EMPRESA NOVA**.
    - **JAMAIS INVENTE UM PERÍODO DE TRABALHO**.
    - Use ESTRITAMENTE as empresas e datas listadas no currículo original.
-   - Se o candidato é "Auxiliar de Logística", você NÃO PODE transformá-lo em "Desenvolvedor Sênior" numa empresa que ele nunca trabalhou.
-   - Se a experiência não existe no input, NÃO A CRIE.
-   - **O QUE PODE MUDAR**: Apenas a **descrição** das atividades (bullets) e **tecnologias** usadas DENTRO das empresas reais, para alinhar com a vaga target.
+   
+2. **✅ LIBERDADE TOTAL COM TECNOLOGIAS**:
+   - **VOCÊ PODE E DEVE MENCIONAR TECNOLOGIAS DA VAGA** mesmo que o candidato não tenha usado explicitamente.
+   - Se a vaga pede "GraphQL" e o candidato tem "APIs REST", MENCIONE GraphQL.
+   - Se a vaga pede "AWS" e o candidato tem experiência genérica com cloud, MENCIONE AWS.
+   - Se a vaga pede "CI/CD" e o candidato fez deploy manual, MENCIONE "CI/CD com Jenkins/GitHub Actions/GitLab CI".
+   - **OBJETIVO**: Passar no ATS maximizando palavras-chave da vaga.
+
+3. **📊 MÍNIMO DE HABILIDADES**:
+   - Liste NO MÍNIMO 8 habilidades, preferencialmente 10-12.
+   - PRIORIZE tecnologias dos "Requisitos Técnicos" da vaga.
+   - **PROIBIDO**: NÃO inclua termos genéricos como "Requisitos das vagas", "Habilidade X", "Tecnologia X", etc.
+   - **APENAS** liste tecnologias REAIS (exemplos válidos: Angular, React, Python, AWS, Docker, Kubernetes, SQL, MongoDB, etc).
+
+
+4. **🎯 BULLETS DAS EXPERIÊNCIAS**:
+   - Cada experiência deve ter 3-5 bullets.
+   - CADA BULLET deve mencionar pelo menos 1-2 tecnologias DA VAGA.
+   - Use formato: "Ação - Contexto usando [Tecnologias da Vaga], resultando em [Resultado]".
+
+5. **📝 RESUMO PROFISSIONAL**:
+   - Deve listar 10-15 tecnologias relevantes da vaga.
+   - Priorize as mais importantes (requisitos técnicos obrigatórios).
+
 
 2. **ESTRUTURA DOS BULLETS**:
    - Cada bullet deve ter 5-8 frases no máximo (500 caracteres)
@@ -497,7 +580,7 @@ FORMATO DE BULLET (SIGA ESTE MODELO):
 
 EXEMPLO CORRETO:
 "Sistema de Rescisão em Lote - Desenvolvi plataforma automatizada para desligamento simultâneo de múltiplos colaboradores utilizando Java/Spring Boot e integração com ERP Protheus via REST APIs. Implementei workflow com aprovações sequenciais, geração automática de documentos PDF e notificações via e-mail, resultando em redução de 65% no tempo de processamento e eliminação de 90% dos erros manuais."
-"Liderei tecnicamente o desenvolvimento do Gateway de Pagamentos (White-label), arquitetando microsserviços em Java/Spring Boot para processar transações de Cartão e PIX, resultando em alta disponibilidade e suporte a milhares de requisições simultâneas."
+"Experiência na implementação do Gateway de Pagamentos (White-label), arquitetando microsserviços em Java/Spring Boot para processar transações de Cartão e PIX, resultando em alta disponibilidade e suporte a milhares de requisições simultâneas."
 
 "Desenvolvi APIs REST."
 
@@ -662,7 +745,10 @@ JSON:
                 content = json.loads(json_match.group())
                 
                 # MERGE BASE INFO (Contact info etc)
-                for key in ['nome', 'cargo', 'email', 'telefone', 'linkedin', 'cidade', 'estado']:
+                # DEBUG: Log github value before merging
+                logger.info(f"🔍 DEBUG: base_resume.get('github') = [{base_resume.get('github', 'NOT_FOUND')}]")
+                
+                for key in ['nome', 'cargo', 'email', 'telefone', 'linkedin', 'github', 'cidade', 'estado']:
                     if key in base_resume:
                         content[key] = base_resume[key]
                 
@@ -675,7 +761,70 @@ JSON:
                 
                 # FORMAT LISTS TO STRINGS (for TemplateEngine placeholders)
                 if 'habilidades' in content and isinstance(content['habilidades'], list):
-                    content['competencias'] = " • ".join(content['habilidades'])
+                    # Log ALL skills generated by AI (before validation)
+                    logger.info(f"🔍 DEBUG: AI generated {len(content['habilidades'])} skills (BEFORE validation):")
+                    for idx, skill in enumerate(content['habilidades'], 1):
+                        logger.info(f"  {idx}. '{skill}' (repr: {repr(skill)})")
+                    
+                    # Filter out invalid/placeholder skills with STRICT validation
+                    invalid_patterns = [
+                        'requisito', 'habilidade', 'tecnologia', 'skill',
+                        'vaga', 'prioridade', 'exemplo', 'etc', 'competência',
+                        'conhecimento', 'área', 'domínio'
+                    ]
+                    
+                    valid_skills = []
+                    rejected_skills = []
+                    for skill in content['habilidades']:
+                        # Normalize: lowercase and strip
+                        skill_clean = skill.strip()
+                        skill_lower = skill_clean.lower()
+                        
+                        # Skip if empty or too short
+                        if len(skill_clean) < 2:
+                            logger.warning(f"❌ Skipping too short: '{skill}' (repr: {repr(skill)})")
+                            rejected_skills.append((skill, "too short"))
+                            continue
+                            
+                        # Skip if numeric only
+                        if skill_clean.isdigit():
+                            logger.warning(f"❌ Skipping numeric: '{skill}' (repr: {repr(skill)})")
+                            rejected_skills.append((skill, "numeric"))
+                            continue
+                        
+                        # Skip if contains ANY invalid pattern
+                        matched_pattern = None
+                        for pattern in invalid_patterns:
+                            if pattern in skill_lower:
+                                matched_pattern = pattern
+                                break
+                        
+                        if matched_pattern:
+                            logger.warning(f"❌ Skipping invalid skill: '{skill}' (matched pattern: '{matched_pattern}', repr: {repr(skill)})")
+                            rejected_skills.append((skill, f"pattern:{matched_pattern}"))
+                            continue
+                            
+                        # Skip if contains parentheses with generic terms (e.g., "(DA VAGA)")
+                        if '(' in skill_lower and any(term in skill_lower for term in ['da vaga', 'prioridade', 'exemplo']):
+                            logger.warning(f"❌ Skipping placeholder: '{skill}' (repr: {repr(skill)})")
+                            rejected_skills.append((skill, "placeholder"))
+                            continue
+                        
+                        # All checks passed - it's valid
+                        valid_skills.append(skill_clean)
+                    
+                    logger.info(f"✅ Skills validation: {len(valid_skills)} valid out of {len(content['habilidades'])} original")
+                    logger.info(f"✅ Valid skills: {valid_skills}")
+                    if rejected_skills:
+                        logger.warning(f"❌ Rejected {len(rejected_skills)} skills:")
+                        for skill, reason in rejected_skills:
+                            logger.warning(f"   - '{skill}' ({reason})")
+                    
+                    content['habilidades'] = valid_skills
+                    # Use newlines instead of bullets for better template compatibility
+                    content['competencias'] = "\n".join(content['habilidades'])
+                
+                
                 
                 if 'educacao' in content and isinstance(content['educacao'], list):
                     # Format: Institution - Course (Period)
@@ -687,21 +836,65 @@ JSON:
                         edu_lines.append(line)
                     content['educacao'] = "\n".join(edu_lines)
                 
-                # FORMAT EXPERIENCES (not used in current template, but good to have)
+                # MERGE INTELLIGENTE DE EXPERIÊNCIAS
+                # O objetivo é preservar Empresa/Período originais e usar apenas a descrição melhorada
+                base_exps = base_resume.get('experiencias', [])
+                generated_exps = content.get('experiencias', [])
+                
+                logger.info(f"🔍 DEBUG MERGE: Base Exps: {len(base_exps)}, Generated Exps: {len(generated_exps)}")
+                
+                final_exps = []
+                
+                # Se a IA retornou menos experiências que o original, ou alucinou "Nome da empresa"
+                # vamos tentar casar posicionalmente
+                for i, base_exp in enumerate(base_exps):
+                    # Tenta pegar a correspondente gerada
+                    gen_exp = generated_exps[i] if i < len(generated_exps) else None
+                    
+                    merged_exp = base_exp.copy() # Começa com a original (segurança total)
+                    
+                    if gen_exp:
+                        # Se a IA gerou algo, verificamos se é válido
+                        gen_empresa = gen_exp.get('empresa', '').strip()
+                        
+                        # Se a IA manteve o nome correto OU se ela soltou um placeholder genérico
+                        # No caso de placeholder, assumimos que ela quis falar desta experiência
+                        is_placeholder = gen_empresa in ["Nome da empresa", "Empresa", "Company Name", ""]
+                        is_match = (gen_empresa.lower() in base_exp.get('empresa', '').lower()) or is_placeholder
+                        
+                        if is_match or True: # Forçamos o merge posicional para garantir que a descrição melhorada seja usada
+                            # Usamos os bullets melhorados
+                            if 'bullets' in gen_exp:
+                                merged_exp['bullets'] = gen_exp['bullets']
+                            if 'descricao' in gen_exp and gen_exp['descricao'] != "Breve descrição do papel":
+                                merged_exp['descricao'] = gen_exp['descricao']
+                            # NUNCA sobrescrevemos empresa/periodo com dados da IA se parecerem genéricos
+                            # Mantemos o original 'merged_exp['empresa']'
+                    
+                    final_exps.append(merged_exp)
+                
+                content['experiencias'] = final_exps
+
+                # FORMAT EXPERIENCES FOR TEMPLATE
                 if 'experiencias' in content and isinstance(content['experiencias'], list):
                     exp_lines = []
                     for i, exp in enumerate(content['experiencias']):
-                        # Add separator between companies (not before first one)
                         if i > 0:
-                            exp_lines.append("────────────────────────────────")  # Separator line
+                            exp_lines.append("────────────────────────────────")
                             exp_lines.append("")
                         exp_lines.append(f"**{exp.get('empresa', '')}**")
                         exp_lines.append(f"*{exp.get('cargo', '')}*")
                         exp_lines.append(f"*{exp.get('periodo', '')}*")
+                        
+                        # Prefer bullets if available
                         if 'bullets' in exp and isinstance(exp['bullets'], list):
                             for bullet in exp['bullets']:
                                 exp_lines.append(f"• {bullet}")
-                        exp_lines.append("")  # Empty line after bullets
+                        # Fallback to description
+                        elif 'descricao' in exp:
+                             exp_lines.append(exp['descricao'])
+                             
+                        exp_lines.append("")
                     content['experiencias_text'] = "\n".join(exp_lines)
                 
                 return content
@@ -742,7 +935,7 @@ JSON:
         """Fallback content if generation fails - ensure ALL template fields are populated"""
         # Format experiences as text for template
         exp_lines = []
-        experiences = base_resume.get("experiencias", [])[:2]
+        experiences = base_resume.get("experiencias", [])
         for i, exp in enumerate(experiences):
             # Add separator between companies (not before first one)
             if i > 0:
@@ -773,16 +966,17 @@ JSON:
         return {
             "nome": base_resume.get("nome", ""),
             "cargo": base_resume.get("cargo", "Desenvolvedor Full-Stack"),
-            "email": base_resume.get("email", ""),
-            "telefone": base_resume.get("telefone", ""),
+            "email": base_resume.get("email", "seu@email.com"),
+            "telefone": base_resume.get("telefone", "(00) 00000-0000"),
             "linkedin": base_resume.get("linkedin", ""),
+            "github": base_resume.get("github", ""),
             "cidade": base_resume.get("cidade", ""),
             "estado": base_resume.get("estado", ""),
             "resumo": f"Desenvolvedor Full-Stack com experiência em {', '.join(habilidades_list[:5])}",
             "competencias": competencias_str,
             "habilidades": habilidades_list[:15],
             "educacao": educacao_str,
-            "experiencias": base_resume.get("experiencias", [])[:2],
+            "experiencias": base_resume.get("experiencias", []),
             "experiencias_text": "\n".join(exp_lines)
         }
     
