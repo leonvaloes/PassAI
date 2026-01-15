@@ -5,6 +5,19 @@ let users = [];
 let activeUserId = null;
 let editingUserId = null;
 
+// Navigation
+function goToSelection() {
+    // Send IPC to reopen the selection window BEFORE this window closes
+    // This prevents app.quit() from triggering due to 0 windows
+    if (window.electronAPI && window.electronAPI.send) {
+        window.electronAPI.send('show-selection-window');
+    }
+    // Small delay to ensure new window is created before we close
+    setTimeout(() => {
+        window.close();
+    }, 100);
+}
+
 // DOM Elements
 const usersGrid = document.getElementById('users-grid');
 const userModal = document.getElementById('user-modal');
@@ -122,12 +135,12 @@ async function handleCardClick(e, userId) {
     try {
         if (userId !== activeUserId) {
             await setActiveUser(userId);
+            // Stay on the page and just reload the users to show the new active state
+            await loadUsers();
         }
-        
-        // Navigate to main dashboard (HUD)
-        window.location.href = '../../index.html';
+        // Do NOT navigate away - stay on user management screen
     } catch (error) {
-        console.error('Navigation error:', error);
+        console.error('Error setting active user:', error);
     }
 }
 

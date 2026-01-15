@@ -19,6 +19,11 @@
     box-sizing: border-box;
 }
 
+/* Utility class to hide elements */
+.hidden {
+    display: none !important;
+}
+
 body {
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
     background: var(--bg);

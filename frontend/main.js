@@ -216,28 +216,56 @@ ipcMain.on('open-job-search', () => {
 
 // IPC Handler for User Selection Launch
 ipcMain.on('user-selected-launch', () => {
+  // Create main window FIRST, then close selection
+  // This prevents app.quit() from triggering due to 0 windows
+  createWindow();
   if (selectionWindow) {
     selectionWindow.close();
   }
-  createWindow();
 });
+
+// User Management window
+let userManagementWindow = null;
+function createUserManagementWindow() {
+  if (userManagementWindow) {
+    userManagementWindow.focus();
+    return;
+  }
+
+  userManagementWindow = new BrowserWindow({
+    width: 1000,
+    height: 700,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    title: 'Gerenciamento de Usuários - PassAI',
+    backgroundColor: '#0f172a'
+  });
+
+  userManagementWindow.loadFile('renderer/windows/user-management/user-management.html');
+
+  userManagementWindow.on('closed', () => {
+    userManagementWindow = null;
+  });
+}
 
 ipcMain.on('open-user-manager-setup', () => {
   if (selectionWindow) {
     selectionWindow.close();
   }
-  // Create main window but navigate to user management
-  createWindow();
-  // We need to wait for window to be ready to navigate?
-  // Or just set a flag? 
-  // Let's use a timeout for simplicity or IPC
-  setTimeout(() => {
-    if (mainWindow) {
-        mainWindow.loadFile('renderer/windows/user-management/user-management.html');
-        // Ensure it is opaque and visible
-        mainWindow.setOpacity(1);
-    }
-  }, 500);
+  createUserManagementWindow();
+});
+
+// Also allow opening from main app
+ipcMain.on('open-user-management', () => {
+  createUserManagementWindow();
+});
+
+// Handler to go back to selection window (from user management)
+ipcMain.on('show-selection-window', () => {
+  createSelectionWindow();
 });
 
 app.on('ready', () => {

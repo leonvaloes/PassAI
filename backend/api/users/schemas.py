@@ -60,7 +60,7 @@ class UserProfileUpdate(BaseModel):
     experiencias: Optional[List[Experience]] = None
     educacao: Optional[List[Education]] = None
     habilidades: Optional[List[str]] = None
-    idiomas: Optional[Language] = None
+    idiomas: Optional[List[Language]] = None
 
 
 class UserProfileResponse(BaseModel):
