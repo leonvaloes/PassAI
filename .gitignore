@@ -38,6 +38,7 @@ logs/
 *.log
 
 # Models
+backend/output/
 models/*.pt
 models/*.pth
 !models/.gitkeep
