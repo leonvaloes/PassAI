@@ -31,6 +31,7 @@ Thumbs.db
 desktop.ini
 
 # Project specific
+data/
 debug_audio/
 *.wav
 logs/
