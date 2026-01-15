@@ -25,6 +25,7 @@ const userForm = document.getElementById('user-form');
 const addUserBtn = document.getElementById('add-user-btn');
 const closeModalBtn = document.getElementById('close-modal');
 const cancelBtn = document.getElementById('cancel-btn');
+const submitBtn = document.getElementById('submit-btn');
 const modalTitle = document.getElementById('modal-title');
 
 // Initialize
@@ -190,8 +191,8 @@ function openModal(user = null) {
         (user.idiomas || []).forEach(lang => addLanguageItem(lang));
         
     } else {
-        modalTitle.textContent = 'Novo Perfil';
-        submitBtn.textContent = 'Criar Perfil';
+        // Creating new user - reset form
+        userForm.reset();
         clearDynamicLists();
     }
     
