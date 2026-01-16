@@ -526,11 +526,12 @@ async def generate_more_variants(job_id: str, count: int = 3):
             'habilidades': user_profile['habilidades']
         }
         
-        # Generate exactly N variants using generate() with initial_count
+        # Generate exactly N variants using generate_variants() with initial_count
         try:
-            generated = variant_generator.generate(
+            generated = variant_generator.generate_variants(
                 job=job,
                 base_resume=base_resume,
+                template_path=TEMPLATE_PATH,
                 initial_count=count  # This will stop after first batch
             )
             
