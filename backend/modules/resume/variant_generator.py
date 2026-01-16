@@ -750,13 +750,10 @@ Reescrito:
 
 JSON:
 """
-    
-    # Detect if job is ServiceNow/platform-specific
-    is_servicenow = any(term in job.raw_content.lower() 
-                         for term in ['servicenow', 'glide', 'itom', 'itsm', 'cmdb', 'flow designer'])
-    
-    if is_servicenow:
-        prompt += """
+        
+        # Detect ServiceNow and add specific instructions
+        if any(term in job.raw_content.lower() for term in ['servicenow', 'glide', 'itom', 'itsm', 'cmdb', 'flow designer']):
+            prompt += """
 
 **🔧 INSTRUÇÕES ESPECÍFICAS PARA SERVICENOW**:
 - Relacione experiências com JavaScript/automação com componentes ServiceNow: Business Rules, Script Includes, UI Policies, Client Scripts, Widgets
@@ -766,7 +763,7 @@ JSON:
 - Use terminologia ServiceNow mesmo que candidato tenha usado termos genéricos
 - EXEMPLO: "Desenvolvi automações de processos ITSM utilizando Flow Designer e Business Rules na plataforma ServiceNow"
 """
-    
+
         
         # Generate
         try:
