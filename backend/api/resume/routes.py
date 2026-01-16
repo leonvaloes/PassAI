@@ -531,7 +531,7 @@ async def generate_more_variants(job_id: str, count: int = 3):
             generated = variant_generator.generate_variants(
                 job=job,
                 base_resume=base_resume,
-                template_path=template_path,
+                template_path=template_engine.template_path,
                 initial_count=count  # This will stop after first batch
             )
             
