@@ -367,6 +367,39 @@ REGRA DE OURO (EMPRESAS E PERÍODOS):
    ❌ RUIM: "Trabalhei com APIs"
    ✅ BOM: "Implementei integrações REST/SOAP, processando 10k+ requisições/dia"
 
+10. **KEYWORDS COMPLEMENTARES OBRIGATÓRIAS**:
+   Se a vaga mencionar, você DEVE incluir:
+   
+   a) **Metodologias e Frameworks**:
+      - ITIL, COBIT (especificar versões se candidato tem: COBIT 5, COBIT 2019)
+      - Governança de TI
+      - Gestão de processos
+      - Sustentação e suporte
+   
+   b) **Arquitetura e Design Patterns**:
+      - NO MÍNIMO mencionar 2-3 patterns específicos se vaga pede "design patterns"
+      - Exemplos: Hexagonal, Clean Architecture, Onion, CQRS
+      - Padrões GoF: Strategy, Observer, Factory, Decorator, Bridge
+      - Sempre contextualize: "arquitetura hexagonal para desacoplamento"
+   
+   c) **Qualidade e Boas Práticas**:
+      - Code review
+      - Qualidade de código
+      - Testes automatizados
+      - Análise de impacto técnico
+      - Avaliação de riscos
+      - Documentação técnica
+   
+   d) **DevOps e Versionamento**:
+      - Git/GitHub/GitLab (versionamento)
+      - Pipelines CI/CD (especificar ferramentas: Jenkins, GitHub Actions)
+      - Containerização (Docker, Kubernetes se na vaga)
+   
+   **DISTRIBUA esses termos nas experiências de forma natural**:
+   - 1-2 bullets devem mencionar governança/qualidade/boas práticas
+   - 1 bullet deve mencionar design patterns ou arquitetura
+   - Se tem sustentação, mencione ITIL/COBIT
+
 **📝 SEÇÃO RESUMO - ESTRUTURA NARRATIVA (CRÍTICO)**:
 - **NÃO faça apenas lista de tecnologias!**
 - **ESTRUTURA OBRIGATÓRIA** (2 frases):
