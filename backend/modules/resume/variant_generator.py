@@ -356,16 +356,6 @@ REGRA DE OURO (EMPRESAS E PERÍODOS):
 5. É PERMITIDO mencionar tecnologias da vaga MESMO QUE o candidato não tenha usado explicitamente (exemplo: se ele tem "APIs REST", você pode mencionar "GraphQL"; se tem "deploy manual", pode mencionar "CI/CD com Jenkins/GitHub Actions"; se tem experiência com cloud genérica, pode mencionar "AWS, Azure, GCP").
 6. **PRIORIZE TECNOLOGIAS LISTADAS NOS REQUISITOS DA VAGA** acima de tudo.
 
-**ESTRATÉGIAS DE MAPEAMENTO DE TECNOLOGIAS (️OBRIGATÓRIO USAR)**:
-7. Use estas regras para "emprestar" tecnologias da vaga baseado na experiência do candidato:
-   - REST APIs → SOAP, GraphQL, gRPC,  webhooks (se estão na vaga)
-   - JavaScript → ServiceNow Glide API, UI Policies, Client Scripts, Business Rules
-   - Automação/Workflows → Flow Designer, Orchestration, Process Automation
-   - Integrações → IntegrationHub, MID Server, Event Management
-   - Deploy/CI → Pipelines específicos (Jenkins, GitHub Actions, GitLab CI)
-   - Cloud genérico → AWS, Azure, GCP (especificar services se na vaga)
-   - Sustentação/Suporte → ITIL, ITSM, Incident Management
-   - Testes → ATF (Automated Test Framework), Selenium, Jest
 
 8. **TECNOLOGIAS CORE DA VAGA (DEVEM APARECER)**:
    - Identifique as 5-7 tecnologias MAIS mencionadas na descrição da vaga
@@ -374,11 +364,8 @@ REGRA DE OURO (EMPRESAS E PERÍODOS):
    - Distribua outras nas experiências
 
 9. **REGRA DE DETALHAMENTO (EVITAR GENERICIDADE)**:
-   ❌ RUIM: "Experiência com ServiceNow"
-   ✅ BOM: "Desenvolvendo soluções em ServiceNow utilizando Glide API, Business Rules e Script Includes para automação de processos ITSM"
-   
    ❌ RUIM: "Trabalhei com APIs"
-   ✅ BOM: "Implementei integrações REST/SOAP com IntegrationHub e MID Server, processando 10k+ requisições/dia"
+   ✅ BOM: "Implementei integrações REST/SOAP, processando 10k+ requisições/dia"
 
 **📝 SEÇÃO RESUMO - ESTRUTURA NARRATIVA (CRÍTICO)**:
 - **NÃO faça apenas lista de tecnologias!**
@@ -393,10 +380,10 @@ REGRA DE OURO (EMPRESAS E PERÍODOS):
   * Fullstack: "desenvolvimento end-to-end de aplicações web escaláveis"
 
 **EXEMPLO BOM**:
-"Profissional Pleno em Desenvolvimento Full-Stack com 2+ anos de experiência atuando em desenvolvimento e entrega de soluções web empresariais. Expertise em Java, Spring Boot, Angular, APIs RESTful e arquitetura de microserviços, com foco em alta disponibilidade."
+"Profissional Pleno em Desenvolvimento Full-Stack com 4+ anos de experiência atuando em desenvolvimento e entrega de soluções web empresariais. Expertise em Java, Spring Boot, Angular, APIs RESTful e arquitetura de microserviços, com foco em alta disponibilidade."
 
 **EXEMPLO RUIM** (apenas lista - EVITAR):
-"Profissional Pleno com 2+ anos. Expertise em Angular, TypeScript, JavaScript, HTML5, CSS3, RxJS, NgRx..."
+"Profissional Pleno com 4+ anos. Expertise em Angular, TypeScript, JavaScript, HTML5, CSS3, RxJS, NgRx..."
 
 
 SAÍDA JSON ESPERADA:
@@ -749,35 +736,7 @@ Reescrito:
 ✔ Não altera cargo
 
 JSON:
-"""
-        
-        # Detect ServiceNow and add specific instructions
-        if any(term in job.raw_content.lower() for term in ['servicenow', 'glide', 'itom', 'itsm', 'cmdb', 'flow designer']):
-            prompt += """
 
-**🔧 INSTRUÇÕES MANDATÓRIAS PARA SERVICENOW (NÃO NEGOCIÁVEL)**:
-
-VOCÊ **DEVE** MENCIONAR EXPLICITAMENTE estes componentes ServiceNow nas experiências:
-
-1. **OBRIGATÓRIO no Resumo**: "ServiceNow, Glide API, JavaScript"
-   
-2. **OBRIGATÓRIO nas Experiências** - Distribua estes termos entre os bullets:
-   - Glide API (mencionar em contexto de desenvolvimento JavaScript)
-   - Flow Designer ou Orchestration (em automação/workflows)
-   - IntegrationHub e/ou MID Server (em integrações REST/SOAP)
-   - ITSM, CMDB ou ITOM (em sustentação/processos)
-   - Business Rules, Script Includes, UI Policies, Client Scripts (componentes de desenvolvimento)
-
-3. **FORMATO OBRIGATÓRIO para bullets ServiceNow**:
-   ❌ ERRADO: "Desenvolvi automações"
-   ✅ CORRETO: "Desenvolvi automações utilizando ServiceNow Flow Designer e Business Rules, integrando com sistemas externos via IntegrationHub"
-   
-   ❌ ERRADO: "Trabalhei com JavaScript e APIs"
-   ✅ CORRETO: "Desenvolvi scripts utilizando Glide API (JavaScript) para customizar funcionalidades ITSM no ServiceNow"
-
-4. **MÍNIMO EXIGIDO**:
-   - 3+ componentes ServiceNow devem aparecer nas experiências
-   - Pelo menos 2 tipos diferentes de componentes (ex: Glide API + Flow Designer)
 """
 
 
