@@ -755,14 +755,31 @@ JSON:
         if any(term in job.raw_content.lower() for term in ['servicenow', 'glide', 'itom', 'itsm', 'cmdb', 'flow designer']):
             prompt += """
 
-**🔧 INSTRUÇÕES ESPECÍFICAS PARA SERVICENOW**:
-- Relacione experiências com JavaScript/automação com componentes ServiceNow: Business Rules, Script Includes, UI Policies, Client Scripts, Widgets
-- Se tem automação/workflows → mencione Flow Designer, Orchestration
-- Se tem integrações REST/SOAP → contextualize com IntegrationHub, MID Server, Event Management
-- Se tem suporte/sustentação → relacione com ITIL, ITSM, Incident/Problem/Change Management, CMDB
-- Use terminologia ServiceNow mesmo que candidato tenha usado termos genéricos
-- EXEMPLO: "Desenvolvi automações de processos ITSM utilizando Flow Designer e Business Rules na plataforma ServiceNow"
+**🔧 INSTRUÇÕES MANDATÓRIAS PARA SERVICENOW (NÃO NEGOCIÁVEL)**:
+
+VOCÊ **DEVE** MENCIONAR EXPLICITAMENTE estes componentes ServiceNow nas experiências:
+
+1. **OBRIGATÓRIO no Resumo**: "ServiceNow, Glide API, JavaScript"
+   
+2. **OBRIGATÓRIO nas Experiências** - Distribua estes termos entre os bullets:
+   - Glide API (mencionar em contexto de desenvolvimento JavaScript)
+   - Flow Designer ou Orchestration (em automação/workflows)
+   - IntegrationHub e/ou MID Server (em integrações REST/SOAP)
+   - ITSM, CMDB ou ITOM (em sustentação/processos)
+   - Business Rules, Script Includes, UI Policies, Client Scripts (componentes de desenvolvimento)
+
+3. **FORMATO OBRIGATÓRIO para bullets ServiceNow**:
+   ❌ ERRADO: "Desenvolvi automações"
+   ✅ CORRETO: "Desenvolvi automações utilizando ServiceNow Flow Designer e Business Rules, integrando com sistemas externos via IntegrationHub"
+   
+   ❌ ERRADO: "Trabalhei com JavaScript e APIs"
+   ✅ CORRETO: "Desenvolvi scripts utilizando Glide API (JavaScript) para customizar funcionalidades ITSM no ServiceNow"
+
+4. **MÍNIMO EXIGIDO**:
+   - 3+ componentes ServiceNow devem aparecer nas experiências
+   - Pelo menos 2 tipos diferentes de componentes (ex: Glide API + Flow Designer)
 """
+
 
         
         # Generate
