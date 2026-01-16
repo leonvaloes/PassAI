@@ -356,6 +356,30 @@ REGRA DE OURO (EMPRESAS E PERÍODOS):
 5. É PERMITIDO mencionar tecnologias da vaga MESMO QUE o candidato não tenha usado explicitamente (exemplo: se ele tem "APIs REST", você pode mencionar "GraphQL"; se tem "deploy manual", pode mencionar "CI/CD com Jenkins/GitHub Actions"; se tem experiência com cloud genérica, pode mencionar "AWS, Azure, GCP").
 6. **PRIORIZE TECNOLOGIAS LISTADAS NOS REQUISITOS DA VAGA** acima de tudo.
 
+**ESTRATÉGIAS DE MAPEAMENTO DE TECNOLOGIAS (️OBRIGATÓRIO USAR)**:
+7. Use estas regras para "emprestar" tecnologias da vaga baseado na experiência do candidato:
+   - REST APIs → SOAP, GraphQL, gRPC,  webhooks (se estão na vaga)
+   - JavaScript → ServiceNow Glide API, UI Policies, Client Scripts, Business Rules
+   - Automação/Workflows → Flow Designer, Orchestration, Process Automation
+   - Integrações → IntegrationHub, MID Server, Event Management
+   - Deploy/CI → Pipelines específicos (Jenkins, GitHub Actions, GitLab CI)
+   - Cloud genérico → AWS, Azure, GCP (especificar services se na vaga)
+   - Sustentação/Suporte → ITIL, ITSM, Incident Management
+   - Testes → ATF (Automated Test Framework), Selenium, Jest
+
+8. **TECNOLOGIAS CORE DA VAGA (DEVEM APARECER)**:
+   - Identifique as 5-7 tecnologias MAIS mencionadas na descrição da vaga
+   - CADA UMA deve aparecer pelo menos 1x no CV (resumo OU experiências)
+   - Priorize no RESUMO: mencione as 3 principais
+   - Distribua outras nas experiências
+
+9. **REGRA DE DETALHAMENTO (EVITAR GENERICIDADE)**:
+   ❌ RUIM: "Experiência com ServiceNow"
+   ✅ BOM: "Desenvolvendo soluções em ServiceNow utilizando Glide API, Business Rules e Script Includes para automação de processos ITSM"
+   
+   ❌ RUIM: "Trabalhei com APIs"
+   ✅ BOM: "Implementei integrações REST/SOAP com IntegrationHub e MID Server, processando 10k+ requisições/dia"
+
 **📝 SEÇÃO RESUMO - ESTRUTURA NARRATIVA (CRÍTICO)**:
 - **NÃO faça apenas lista de tecnologias!**
 - **ESTRUTURA OBRIGATÓRIA** (2 frases):
@@ -726,6 +750,23 @@ Reescrito:
 
 JSON:
 """
+    
+    # Detect if job is ServiceNow/platform-specific
+    is_servicenow = any(term in job.raw_content.lower() 
+                         for term in ['servicenow', 'glide', 'itom', 'itsm', 'cmdb', 'flow designer'])
+    
+    if is_servicenow:
+        prompt += """
+
+**🔧 INSTRUÇÕES ESPECÍFICAS PARA SERVICENOW**:
+- Relacione experiências com JavaScript/automação com componentes ServiceNow: Business Rules, Script Includes, UI Policies, Client Scripts, Widgets
+- Se tem automação/workflows → mencione Flow Designer, Orchestration
+- Se tem integrações REST/SOAP → contextualize com IntegrationHub, MID Server, Event Management
+- Se tem suporte/sustentação → relacione com ITIL, ITSM, Incident/Problem/Change Management, CMDB
+- Use terminologia ServiceNow mesmo que candidato tenha usado termos genéricos
+- EXEMPLO: "Desenvolvi automações de processos ITSM utilizando Flow Designer e Business Rules na plataforma ServiceNow"
+"""
+    
         
         # Generate
         try:
