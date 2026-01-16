@@ -471,37 +471,60 @@ REGRAS OBRIGATÓRIAS:
    - **APENAS** liste tecnologias REAIS (exemplos válidos: Angular, React, Python, AWS, Docker, Kubernetes, SQL, MongoDB, etc).
 
 
-4. **🎯 BULLETS DAS EXPERIÊNCIAS (FORMATO DETALHADO E TÉCNICO)**:
+4. **🎯 BULLETS DAS EXPERIÊNCIAS (MANDATÓRIO - NÃO NEGOGIÁVEL)**:
    
-   **ESTRUTURA OBRIGATÓRIA DE CADA BULLET** (3-5 frases):
-   a) Contexto: Qual sistema/projeto + objetivo de negócio
-   b) Stack técnico: Tecnologias ESPECÍFICAS usadas (linguagens, frameworks, BDs, ferramentas)
-   c) Implementação: O QUE você fez tecnicamente + COMO (arquitetura, patterns, práticas)
-   d) Resultado: Impacto quantificável SE possível
+   ⚠️ **ATENÇÃO**: Bullets curtos e genéricos são INACEITÁVEIS. Cada bullet DEVE ter 4-5 frases técnicas.
    
-   **EXEMPLOS DE FORMATO CORRETO**:
+   **REQUISITOS MÍNIMOS OBRIGATÓRIOS POR BULLET**:
+   - ✅ Mínimo 4 frases (preferível 5-6)
+   - ✅ Mínimo 200 caracteres
+   - ✅ Mencionar 5-7 tecnologias/ferramentas ESPECÍFICAS
+   - ✅ Stack completo: Linguagem + Framework + BD + Ferramenta de versionamento + Cloud/Infra
+   - ✅ Incluir patterns OU arquitetura OU metodologia
    
-   ✅ BOM (detalhado, 4-5 frases, tecnologias específicas):
-   "Desenvolvi APIs REST em Java/Spring Boot para workflow de mudança de cargo e salário, versionando código via Git e integrando com banco de dados relacional (Oracle/MySQL). Atuei para garantir qualidade nas entregas implementando validações e testes de integração. Modelei endpoints para integração com ERP Protheus e serviços internos. Documentei contratos de API em Swagger. Participei de refinamentos com PM para validar requisitos do cliente."
+   **USÉ ESTES EXEMPLOS REAIS COMO MODELO** (copie este nível de detalhe):
    
-   ✅ BOM (arquitetura detalhada):
-   "Liderei técnica e funcionalmente módulos que usam arquitetura de Microsserviços, aplicando padrões SOLID para separação de responsabilidades e escalabilidade. Ajudei no desenho de arquitetura dos microserviços, criando contratos por API e definindo contratos de mensageria para fluxo assíncrono. Implementei testes unitários e integração contínua para elevar qualidade. Documentei decisões arquiteturais para a squad."
+   ✅ EXCELENTE (use EXATAMENTE este formato):
+   "Desenvolvi front-end e integração com APIs REST para o site principal utilizando React e endpoints em Java, controlando versões com Git e otimizando chamadas a banco de dados relacional (MySQL). A integração incluiu documentação de APIs e validações para segurança de pagamento. Trabalhei para garantir qualidade nas entregas com testes automatizados e revisão de código. Melhorei performance e SEO do site a partir de otimizações front-end e backend."
    
-   ❌ RUIM (genérico, curto, sem detalhes técnicos):
-   "Desenvolvi um sistema para solicitações utilizando JavaScript e REST APIs, resultando em processo mais eficiente."
+   ✅ EXCELENTE (arquitetura detalhada):
+   "Arquitetuei e implementei módulo de multi-tenancy e permissões em arquitetura de Microsserviços, aplicando princípios SOLID no domínio e definindo contratos de API para comunicação entre serviços. Ajudar no desenho de arquitetura dos microserviços foi requisito para suportar whitelabels. Integrei mensageria para auditoria de ações e implementei testes unitários para regras críticas. Contribuí em especificações com PM e times de produto."
    
-   **REQUISITOS TÉCNICOS POR BULLET**:
-   - Mínimo 3 frases por bullet (preferível 4-5)
-   - Mencionar 4-6 tecnologias/ferramentas ESPECÍFICAS
-   - Incluir stack completo: linguagem + framework + BD + ferramentas auxiliares
-   - Se aplicável: mencionar patterns, arquitetura, metodologias
-   - Verbos técnicos ricos: modelei, configurei, implementei, orquestrei, versionei
+   ✅ EXCELENTE (DevOps/Observabilidade):
+   "Implantei pipelines com Jenkins e GitLab CI para builds e deploys automatizados, criando jobs para testes e releases. Configurei logs centralizados e painéis em Kibana/Grafana para acompanhamento de saúde dos serviços e latência de APIs. Ajudar no desenho de arquitetura dos microserviços incluiu definir estratégias de deployment e rollback. Treinei a equipe em uso dos dashboards para operar e sustentar o que foi desenvolvido."
    
-   **DISTRIBUIÇÃO DE KEYWORDS NOS BULLETS**:
-   - Bullet 1: Stack principal (Java/Spring Boot, Node/Express, Python/Django) + BD + integrações
-   - Bullet 2: Arquitetura (microserviços, patterns, mensageria) + DevOps (CI/CD, pipelines)
-   - Bullet 3: Qualidade (testes, code review, documentação) + governança
-   - Bullet 4+: Sustentação (monitoramento, logs, ITIL) + ferramentas específicas
+   ❌ INACEITÁVEL (muito curto e genérico - NÃO FAÇA ASSIM):
+   "Desenvolvi um sistema de pagamento utilizando JavaScript e REST APIs, aumentando conversão em 20%."
+   
+   ❌ INACEITÁVEL (faltam tecnologias específicas):
+   "Criei uma solução que permitia acesso seguro usando arquitetura de microsserviços."
+   
+   **ESTRUTURA OBRIGATÓRIA** (SIGA RIGOROSAMENTE):
+   
+   Frase 1: [Sistema/Projeto] - [Ação técnica] + [Stack: linguagem/framework] + [versiona mento: Git] + [BD específico: MySQL/MongoDB/PostgreSQL]
+   Frase 2: [Detalhamento técnico] + [integrações/APIs/serviços] + [documentação/segurança]
+   Frase 3: [Qualidade/Testes]+[arquitetura/patterns]+[metodologia: SOLID/Clean/DDD]
+   Frase 4: [DevOps/Deploy/Monitoramento] OU [Resultado quantificável] OU [Colaboração com times]
+   Frase 5 (se aplicável): [Sustentação/Observabilidade] OU [Impacto no negócio]
+   
+   **TECNOLOGIAS QUE DEVEM APARECER** (distribua entre bullets):
+   - Linguagens: Java, JavaScript, Python, TypeScript (especifique a principal)
+   - Frameworks: Spring Boot, React, Node.js, Express, Django
+   - BDs: MySQL, PostgreSQL, MongoDB, Oracle (sempre especifique)
+   - Versionamento: Git, GitHub, GitLab (sempre mencione)
+   - Cloud/Infra: AWS, Azure, Docker, Kubernetes
+   - Mensageria: RabbitMQ, Kafka (se aplicável)
+   - Observabilidade: Kibana, Grafana, logs centralizados
+   - CI/CD: Jenkins, GitHub Actions, GitLab CI, pipelines
+   - Patterns: SOLID, Clean Architecture, Hexagonal, Event-Driven, CQRS
+   - Metodologias: ITIL, COBIT, Agile, Scrum
+   
+   **VERBOS TÉCNICOS OBRIGATÓRIOS** (use variedade):
+   - Desenvolvi, Implementei, Arquiteturei, Configurei, Modelei
+   - Integrei, Orquestrei, Versionei, Hospedei, Monitorei
+   - Documentei, Otimizei, Colaborei, Contribuí, Treinei
+   
+   **REGRA DE OURO**: Se um bullet tem menos de 4 frases ou menos de 5 tecnologias, está INCOMPLETO.
 
 5. **📝 RESUMO PROFISSIONAL**:
    - Deve listar 10-15 tecnologias relevantes da vaga.
