@@ -471,10 +471,37 @@ REGRAS OBRIGATÓRIAS:
    - **APENAS** liste tecnologias REAIS (exemplos válidos: Angular, React, Python, AWS, Docker, Kubernetes, SQL, MongoDB, etc).
 
 
-4. **🎯 BULLETS DAS EXPERIÊNCIAS**:
-   - Cada experiência deve ter 3-5 bullets.
-   - CADA BULLET deve mencionar pelo menos 1-2 tecnologias DA VAGA.
-   - Use formato: "Ação - Contexto usando [Tecnologias da Vaga], resultando em [Resultado]".
+4. **🎯 BULLETS DAS EXPERIÊNCIAS (FORMATO DETALHADO E TÉCNICO)**:
+   
+   **ESTRUTURA OBRIGATÓRIA DE CADA BULLET** (3-5 frases):
+   a) Contexto: Qual sistema/projeto + objetivo de negócio
+   b) Stack técnico: Tecnologias ESPECÍFICAS usadas (linguagens, frameworks, BDs, ferramentas)
+   c) Implementação: O QUE você fez tecnicamente + COMO (arquitetura, patterns, práticas)
+   d) Resultado: Impacto quantificável SE possível
+   
+   **EXEMPLOS DE FORMATO CORRETO**:
+   
+   ✅ BOM (detalhado, 4-5 frases, tecnologias específicas):
+   "Desenvolvi APIs REST em Java/Spring Boot para workflow de mudança de cargo e salário, versionando código via Git e integrando com banco de dados relacional (Oracle/MySQL). Atuei para garantir qualidade nas entregas implementando validações e testes de integração. Modelei endpoints para integração com ERP Protheus e serviços internos. Documentei contratos de API em Swagger. Participei de refinamentos com PM para validar requisitos do cliente."
+   
+   ✅ BOM (arquitetura detalhada):
+   "Liderei técnica e funcionalmente módulos que usam arquitetura de Microsserviços, aplicando padrões SOLID para separação de responsabilidades e escalabilidade. Ajudei no desenho de arquitetura dos microserviços, criando contratos por API e definindo contratos de mensageria para fluxo assíncrono. Implementei testes unitários e integração contínua para elevar qualidade. Documentei decisões arquiteturais para a squad."
+   
+   ❌ RUIM (genérico, curto, sem detalhes técnicos):
+   "Desenvolvi um sistema para solicitações utilizando JavaScript e REST APIs, resultando em processo mais eficiente."
+   
+   **REQUISITOS TÉCNICOS POR BULLET**:
+   - Mínimo 3 frases por bullet (preferível 4-5)
+   - Mencionar 4-6 tecnologias/ferramentas ESPECÍFICAS
+   - Incluir stack completo: linguagem + framework + BD + ferramentas auxiliares
+   - Se aplicável: mencionar patterns, arquitetura, metodologias
+   - Verbos técnicos ricos: modelei, configurei, implementei, orquestrei, versionei
+   
+   **DISTRIBUIÇÃO DE KEYWORDS NOS BULLETS**:
+   - Bullet 1: Stack principal (Java/Spring Boot, Node/Express, Python/Django) + BD + integrações
+   - Bullet 2: Arquitetura (microserviços, patterns, mensageria) + DevOps (CI/CD, pipelines)
+   - Bullet 3: Qualidade (testes, code review, documentação) + governança
+   - Bullet 4+: Sustentação (monitoramento, logs, ITIL) + ferramentas específicas
 
 5. **📝 RESUMO PROFISSIONAL**:
    - Deve listar 10-15 tecnologias relevantes da vaga.
