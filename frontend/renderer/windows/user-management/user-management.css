@@ -1,0 +1,558 @@
+/* User Management Styles */
+:root {
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --secondary: #64748b;
+    --danger: #ef4444;
+    --success: #10b981;
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface-hover: #334155;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --border: #334155;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Utility class to hide elements */
+.hidden {
+    display: none !important;
+}
+
+body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 2rem;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    -webkit-app-region: drag; /* Allow dragging window */
+    padding: 1rem 0;
+}
+
+header h1, header button, .window-controls {
+    -webkit-app-region: no-drag; /* Clickable elements */
+}
+
+.window-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-close-app {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s;
+}
+
+.btn-close-app:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+h1 {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+/* Buttons */
+.btn-primary, .btn-secondary, .btn-danger {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    color: white;
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+
+/* Users Grid */
+.users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.user-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    position: relative;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.user-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    border-color: var(--primary);
+}
+
+.user-card.active {
+    border-color: var(--success);
+    box-shadow: 0 0 0 2px var(--success), 0 8px 30px rgba(16, 185, 129, 0.2);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.active-badge {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    background: var(--success);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    pointer-events: none;
+}
+
+.user-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    margin-top: 1.5rem; /* Space for badge/menu */
+}
+
+.user-email {
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+/* Context Menu */
+.card-menu-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.5rem; /* Kebab size */
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 10;
+    line-height: 1;
+}
+
+.card-menu-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}
+
+.card-dropdown {
+    position: absolute;
+    top: 3rem;
+    right: 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    z-index: 20;
+    min-width: 160px;
+    display: none;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.card-dropdown.show {
+    display: flex;
+    animation: fadeIn 0.1s ease;
+}
+
+.menu-item {
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.2s;
+    font-size: 0.875rem;
+    background: none;
+    border: none;
+    text-align: left;
+    width: 100%;
+}
+
+.menu-item:hover {
+    background: var(--surface-hover);
+}
+
+.menu-item.delete {
+    color: var(--danger);
+    border-top: 1px solid var(--border);
+}
+
+.menu-item.delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.hid den {
+    display: none;
+}
+
+.modal-content {
+    background: var(--surface);
+    border-radius: 1rem;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+/* Form */
+#user-form {
+    padding: 1.5rem;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-section h3 {
+    margin-bottom: 1rem;
+    color: var(--primary);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+textarea {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    color: var(--text);
+    font-size: 1rem;
+}
+
+textarea {
+    resize: vertical;
+    font-family: inherit;
+    min-height: 100px;
+}
+
+input:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+small {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.loading {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+}
+
+/* AI Profile Fill Styles */
+.ai-fill-section {
+    background: var(--surface-hover);
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.ai-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-ai {
+    padding: 0.5rem 1rem;
+    background: var(--secondary);
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.ai-panel {
+    margin-top: 1rem;
+    transition: all 0.3s ease;
+}
+
+.ai-panel.hidden {
+    display: none;
+}
+
+.ai-instruction {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+#ai-input {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.875rem;
+    resize: vertical;
+    margin-bottom: 1rem;
+}
+
+#ai-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+#extract-ai-btn {
+   width: 100%;
+    margin-bottom: 1rem;
+}
+
+.ai-status {
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+}
+
+/* AI Status Messages */
+.ai-status.loading { color: var(--text-secondary); }
+.ai-status.success {
+    color: var(--success-color);
+    background: rgba(16, 185, 129, 0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.ai-status.error {
+    color: var(--error-color);
+    background: rgba(239, 68, 68, 0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Dynamic Form Sections */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-sm:hover {
+    background: var(--bg-secondary);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.dynamic-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.card-item {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    position: relative;
+    animation: slideDown 0.3s ease-out;
+}
+
+.remove-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    cursor: pointer;
+    line-height: 1;
+    z-index: 10;
+}
+
+.remove-btn:hover {
+    color: var(--error-color);
+}
+
+/* Skills Section */
+.add-skill-control {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.sm-input {
+    padding: 0.25rem 0.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.skills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.skill-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 100px;
+    font-size: 0.875rem;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.skill-remove {
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.skill-remove:hover {
+    opacity: 1;
+    font-weight: bold;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.flex-grow { flex: 1; }

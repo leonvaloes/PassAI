@@ -212,6 +212,45 @@ class MongoDB:
             },
             upsert=True
         )
+    
+    # Active User Management
+    def get_active_user_id(self) -> Optional[str]:
+        """
+        Get ID of currently active user
+        
+        Returns:
+            User ObjectId as string, or None if no active user set
+        """
+        config = self.db.app_config.find_one({"_id": "active_user_config"})
+        if config and "user_id" in config:
+            return config["user_id"]
+        return None
+    
+    def set_active_user_id(self, user_id: str) -> bool:
+        """
+        Set active user ID
+        
+        Args:
+            user_id: User ObjectId as string
+            
+        Returns:
+            True if successful
+        """
+        from datetime import datetime
+        
+        result = self.db.app_config.update_one(
+            {"_id": "active_user_config"},
+            {
+                "$set": {
+                    "user_id": user_id,
+                    "updated_at": datetime.utcnow()
+                }
+            },
+            upsert=True
+        )
+        
+        logger.info(f"✅ Active user set to: {user_id}")
+        return result.acknowledged
 
 
 # Global singleton

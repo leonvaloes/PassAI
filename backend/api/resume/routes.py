@@ -264,15 +264,32 @@ async def start_generation(job_id: str, request: GenerateRequest):
                 
             logger.info(f"✅ On-Demand Enrichment result: {len(job_data['requisitos_tecnicos'])} reqs found")
 
-        # Load user profile from MongoDB
-        user_profile = db.db.user_profiles.find_one({"profile_name": "Leonardo"})
+        # Load active user profile from MongoDB
+        active_user_id = db.get_active_user_id()
         
-        if not user_profile:
-            logger.error("❌ User profile not found in database!")
-            raise HTTPException(
-                status_code=400, 
-                detail="User profile not found. Run: python backend/scripts/populate_leonardo_profile.py"
-            )
+        if not active_user_id:
+            # Try auto-select if only one user exists
+            users = list(db.db.user_profiles.find().limit(2))
+            if len(users) == 1:
+                active_user_id = str(users[0]["_id"])
+                db.set_active_user_id(active_user_id)
+                logger.info(f"🌟 Auto-selected only user as active: {active_user_id}")
+                user_profile = users[0]
+            else:
+                logger.error("❌ No active user set!")
+                raise HTTPException(
+                    status_code=400,
+                    detail="No active user set. Please select a user in the User Management section."
+                )
+        else:
+            user_profile = db.db.user_profiles.find_one({"_id": ObjectId(active_user_id)})
+            
+            if not user_profile:
+                logger.error(f"❌ Active user {active_user_id} not found in database!")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Active user profile not found in database. Please select a valid user."
+                )
         
         logger.info(f"✅ Loaded profile: {user_profile['nome']} ({len(user_profile['experiencias'])} experiences, {len(user_profile['habilidades'])} skills)")
         
@@ -471,14 +488,29 @@ async def generate_more_variants(job_id: str, count: int = 3):
         
         logger.info(f"Starting incremental generation: +{count} variants for job {job_id}")
         
-        # Load user profile from MongoDB
-        user_profile = db.db.user_profiles.find_one({"profile_name": "Leonardo"})
+        # Load active user profile from MongoDB
+        active_user_id = db.get_active_user_id()
         
-        if not user_profile:
-            raise HTTPException(
-                status_code=400,
-                detail="User profile 'Leonardo' not found. Please create a profile first."
-            )
+        if not active_user_id:
+            # Try auto-select if only one user exists
+            users = list(db.db.user_profiles.find().limit(2))
+            if len(users) == 1:
+                active_user_id = str(users[0]["_id"])
+                db.set_active_user_id(active_user_id)
+                user_profile = users[0]
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No active user set. Please select a user first."
+                )
+        else:
+            user_profile = db.db.user_profiles.find_one({"_id": ObjectId(active_user_id)})
+            
+            if not user_profile:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Active user profile not found in database."
+                )
         
         # Build base_resume from profile
         base_resume = {
@@ -494,38 +526,21 @@ async def generate_more_variants(job_id: str, count: int = 3):
             'habilidades': user_profile['habilidades']
         }
         
-        # Generate exactly N variants using the internal batch method
+        # Generate exactly N variants using generate_variants() with initial_count
         try:
-            generated = []
+            generated = variant_generator.generate_variants(
+                job=job,
+                base_resume=base_resume,
+                template_path=template_engine.template_path,
+                initial_count=count  # This will stop after first batch
+            )
             
-            # Temporarily override batch_size to generate exactly what user wants
-            original_batch_size = variant_generator.batch_size
-            variant_generator.batch_size = count
-            
-            try:
-                batch = variant_generator._generate_batch(
-                    job=job,
-                    base_resume=base_resume,
-                    round_num=1
-                )
+            # Save each variant to database
+            for i, variant in enumerate(generated, 1):
+                variant_id = db.insert_variant(variant.dict(by_alias=True, exclude={'id'}))
+                variant.id = variant_id
+                logger.info(f"Generated variant {i}/{count}: Score {variant.ats_score:.1f}")
                 
-                # Score and save each variant
-                for variant in batch:
-                    score = variant_generator.ats_sim.score(variant, job)
-                    variant.ats_score = score
-                    variant.ats_status = variant_generator._classify_status(score)
-                    
-                    # Save to MongoDB
-                    variant_id = db.insert_variant(variant.dict(by_alias=True, exclude={'id'}))
-                    variant.id = variant_id
-                    
-                    generated.append(variant)
-                    logger.info(f"Generated variant {len(generated)}/{count}: Score {score:.1f}")
-                    
-            finally:
-                # Restore original batch_size
-                variant_generator.batch_size = original_batch_size
-                    
         except Exception as e:
             logger.error(f"Variant generation failed: {e}", exc_info=True)
             raise HTTPException(

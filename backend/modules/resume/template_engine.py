@@ -80,6 +80,53 @@ class TemplateEngine:
         logger.info(f"✅ Template analyzed: {len(self.placeholders)} placeholders found")
         logger.info(f"   Placeholders: {list(self.placeholders.keys())}")
     
+    def _add_hyperlink(self, paragraph, url, text):
+        """
+        Add a clickable hyperlink to a paragraph
+        
+        Args:
+            paragraph: The DOCX paragraph object
+            url: The URL to link to
+            text: The display text for the link
+        """
+        from docx.oxml.shared import OxmlElement, qn
+        
+        # Get or create the paragraph's element
+        p = paragraph._p
+        
+        # Create a new hyperlink element
+        hyperlink = OxmlElement('w:hyperlink')
+        
+        # Create the relationship for the hyperlink
+        part = paragraph.part
+        r_id = part.relate_to(url, 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink', is_external=True)
+        hyperlink.set(qn('r:id'), r_id)
+        
+        # Create a run for the link text
+        new_run = OxmlElement('w:r')
+        
+        # Add run properties (styling)
+        rPr = OxmlElement('w:rPr')
+        
+        # Make it blue and underlined (standard link style)
+        color = OxmlElement('w:color')
+        color.set(qn('w:val'), '0563C1')
+        rPr.append(color)
+        
+        u = OxmlElement('w:u')
+        u.set(qn('w:val'), 'single')
+        rPr.append(u)
+        
+        new_run.append(rPr)
+        
+        # Add the text
+        t = OxmlElement('w:t')
+        t.text = text
+        new_run.append(t)
+        
+        hyperlink.append(new_run)
+        p.append(hyperlink)
+
     def fill_template(
         self, 
         content: Dict[str, any], 
@@ -129,7 +176,8 @@ class TemplateEngine:
             
             # 3. Legacy Section Filling (Fallback for specific fixed fields like Title)
             # We keep this for now but it might be redundant
-            self._fill_by_sections(doc, content, warnings)
+            # DISABLED: Causes RESUMO duplication - placeholders handle this
+            # self._fill_by_sections(doc, content, warnings)
             
             # Validate layout preservation
             layout_ok = self._validate_layout(doc)
@@ -214,10 +262,36 @@ class TemplateEngine:
 
             # Replace in ALL runs to preserve formatting
             placeholder_tag = f"{{{{{placeholder}}}}}"
-            for run in paragraph.runs:
-                if placeholder_tag in run.text:
-                    # Replace text ONLY, preserve all formatting
-                    run.text = run.text.replace(placeholder_tag, str(value))
+            
+            # Special handling for links (LINKEDIN, GITHUB)
+            if placeholder in ['LINKEDIN', 'GITHUB']:
+                # DEBUG: Log the value being processed
+                logger.info(f"🔗 DEBUG: {placeholder} value = [{value}]")
+                
+                # For links, we need to create a hyperlink
+                for run in paragraph.runs:
+                    if placeholder_tag in run.text:
+                        # Ensure URL has https:// prefix
+                        url = str(value)
+                        if url and not url.startswith('http'):
+                            url = f"https://{url}"
+                        
+                        # Add hyperlink to paragraph
+                        if url:  # Only add if non-empty
+                            self._add_hyperlink(paragraph, url, url)
+                        # Clear the placeholder run
+                        run.text = ""
+            else:
+                # Regular text replacement
+                for run in paragraph.runs:
+                    if placeholder_tag in run.text:
+                        # Replace text ONLY, preserve all formatting
+                        run.text = run.text.replace(placeholder_tag, str(value))
+            
+            # Apply JUSTIFY alignment for text-heavy sections
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            if placeholder in ['RESUMO']:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     
     def _fill_by_sections(
         self,
@@ -578,12 +652,16 @@ class TemplateEngine:
                     new_p.runs[0].bold = True
                     new_p.runs[0].italic = True
             elif original_line.startswith('•'):
-                # Bullets - Nunito 11pt with indent (tab)
+                # Bullets - Nunito 11pt with indent (tab) and JUSTIFY alignment
                 if new_p.runs:
                     new_p.runs[0].font.name = 'Nunito'
                     new_p.runs[0].font.size = Pt(11)
                 # Add left indent for bullet (approximately 1 tab = 0.5 inches)
                 new_p.paragraph_format.left_indent = Inches(0.5)
+                # Apply JUSTIFY alignment
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+                new_p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
             else:
                 # Other content (separators, etc.) - Nunito default
                 if new_p.runs:

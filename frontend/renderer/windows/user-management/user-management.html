@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Usuários</title>
+    <link rel="stylesheet" href="user-management.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <button id="back-btn" class="btn-secondary" onclick="goToSelection()" title="Voltar para Seleção">← Voltar</button>
+                <h1>Gerenciamento de Usuários</h1>
+            </div>
+            <div class="window-controls">
+                <button id="add-user-btn" class="btn-primary">+ Adicionar Usuário</button>
+                <button class="btn-close-app" onclick="window.close()" title="Fechar Aplicativo">×</button>
+            </div>
+        </header>
+
+        <div class="users-grid" id="users-grid">
+            <!-- User cards will be dynamically inserted here -->
+            <div class="loading">Carregando usuários...</div>
+        </div>
+
+        <!-- Add/Edit User Modal -->
+        <div id="user-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title">Adicionar Usuário</h2>
+                    <button class="close-btn" id="close-modal">&times;</button>
+                </div>
+                
+                <form id="user-form">
+                    <input type="hidden" id="user-id">
+                    
+                    <div class="form-section">
+                        <h3>Informações Básicas</h3>
+                        
+                        <div class="form-group">
+                            <label for="profile-name">Nome do Perfil *</label>
+                            <input type="text" id="profile-name" required 
+                                   placeholder="ex: leonardo, maria, joao">
+                            <small>Identificador único (letras minúsculas, sem espaços)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="nome">Nome Completo *</label>
+            <input type="text" id="nome" required 
+                                   placeholder="ex: Leonardo Valões Novaes Ribeiro">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="cargo-atual">Cargo Atual *</label>
+                            <input type="text" id="cargo-atual" required 
+                                   placeholder="ex: Desenvolvedor Full-Stack">
+                        </div>
+                    </div>
+
+                    <!-- AI Profile Fill Section -->
+                    <div class="form-section ai-fill-section">
+                        <div class="ai-header">
+                            <h3>✨ Preencher com IA</h3>
+                            <button type="button" class="btn-ai" id="toggle-ai-btn">Expandir</button>
+                        </div>
+                        
+                        <div id="ai-panel" class="ai-panel hidden">
+                            <p class="ai-instruction">
+                                Cole seu CV, resumo do LinkedIn, ou descreva sua experiência profissional. 
+                                A IA vai extrair automaticamente suas experiências, formações e habilidades.
+                            </p>
+                            <textarea id="ai-input" placeholder="Ex: Trabalhei na Security de 2022 a 2024 como desenvolvedor full-stack. Desenvolvi sistemas com Java, Spring Boot, React..." rows="6"></textarea>
+                            <button type="button" class="btn-primary" id="extract-ai-btn">🤖 Extrair Dados</button>
+                            <div id="ai-status" class="ai-status"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Contato</h3>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email">Email *</label>
+                                <input type="email" id="email" required 
+                                       placeholder="email@exemplo.com">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="telefone">Telefone *</label>
+                                <input type="tel" id="telefone" required 
+                                       placeholder="(00) 00000-0000">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="linkedin">LinkedIn *</label>
+                                <input type="text" id="linkedin" required 
+                                       placeholder="linkedin.com/seu-perfil">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="github">GitHub</label>
+                                <input type="text" id="github" 
+                                       placeholder="github.com/seu-usuario">
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="form-section">
+                        <h3>Localização</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cidade">Cidade *</label>
+                                <input type="text" id="cidade" required placeholder="Cidade">
+                            </div>
+                            <div class="form-group">
+                                <label for="estado">Estado *</label>
+                                <input type="text" id="estado" required placeholder="UF" maxlength="2">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Sections -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3>Experiências Profissionais</h3>
+                            <button type="button" class="btn-sm btn-outline" id="add-exp-btn">+ Adicionar</button>
+                        </div>
+                        <div id="experiences-list" class="dynamic-list"></div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3>Formação Acadêmica</h3>
+                            <button type="button" class="btn-sm btn-outline" id="add-edu-btn">+ Adicionar</button>
+                        </div>
+                        <div id="education-list" class="dynamic-list"></div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3>Habilidades</h3>
+                            <div class="add-skill-control">
+                                <input type="text" id="new-skill-input" placeholder="Nova habilidade..." class="sm-input">
+                                <button type="button" class="btn-sm btn-outline" id="add-skill-btn">Adicionar</button>
+                            </div>
+                        </div>
+                        <div id="skills-list" class="skills-container"></div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3>Idiomas</h3>
+                            <button type="button" class="btn-sm btn-outline" id="add-lang-btn">+ Adicionar</button>
+                        </div>
+                        <div id="languages-list" class="dynamic-list"></div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="cancel-btn" id="cancel-btn">Cancelar</button>
+                        <button type="submit" class="save-btn" id="submit-btn">Criar Perfil</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates for Dynamic Items -->
+    <template id="exp-template">
+        <div class="dynamic-item card-item">
+            <button type="button" class="remove-btn" title="Remover">&times;</button>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Empresa</label>
+                    <input type="text" class="exp-empresa" placeholder="Empresa">
+                </div>
+                <div class="form-group">
+                    <label>Cargo</label>
+                    <input type="text" class="exp-cargo" placeholder="Cargo">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Período</label>
+                <input type="text" class="exp-periodo" placeholder="Ex: Jan 2020 - Atual">
+            </div>
+            <div class="form-group">
+                <label>Descrição</label>
+                <textarea class="exp-descricao" rows="6" placeholder="Descreva suas atividades detalhadamente..."></textarea>
+            </div>
+        </div>
+    </template>
+
+    <template id="edu-template">
+        <div class="dynamic-item card-item">
+            <button type="button" class="remove-btn" title="Remover">&times;</button>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Instituição</label>
+                    <input type="text" class="edu-instituicao" placeholder="Instituição">
+                </div>
+                <div class="form-group">
+                    <label>Curso</label>
+                    <input type="text" class="edu-curso" placeholder="Curso/Grau">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Período</label>
+                <input type="text" class="edu-periodo" placeholder="Ex: 2018 - 2022">
+            </div>
+        </div>
+    </template>
+
+    <template id="lang-template">
+        <div class="dynamic-item card-item form-row">
+            <button type="button" class="remove-btn" title="Remover">&times;</button>
+            <div class="form-group flex-grow">
+                <input type="text" class="lang-idioma" placeholder="Idioma">
+            </div>
+            <div class="form-group">
+                <input type="text" class="lang-nivel" placeholder="Nível (ex: Fluente)">
+            </div>
+        </div>
+    </template>
+
+    <script src="user-management.js"></script>
+</body>
+</html>

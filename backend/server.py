@@ -40,6 +40,10 @@ app.add_middleware(
 from api.resume import router as resume_router, init_resume_system
 app.include_router(resume_router)
 
+# Import and include User Management API routes
+from api.users.routes import router as users_router
+app.include_router(users_router)
+
 # Import and include Profile API routes
 from api.profile import router as profile_router, init_profile_system
 app.include_router(profile_router)

@@ -31,12 +31,14 @@ Thumbs.db
 desktop.ini
 
 # Project specific
+data/
 debug_audio/
 *.wav
 logs/
 *.log
 
 # Models
+backend/output/
 models/*.pt
 models/*.pth
 !models/.gitkeep
@@ -48,3 +50,17 @@ linkedin_cookies.pkl
 
 # Artifacts (personal notes)
 .gemini/
+
+# Debug and temporary scripts
+check_*.py
+add_*.py
+clean_*.py
+fix_*.py
+inspect_*.py
+revert_*.py
+*_patch.txt
+
+# Template backups  
+layoutCV/layout_backup*.docx
+layoutCV/layout_fixed*.docx
+layoutCV/*_backup*.docx

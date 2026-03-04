@@ -5,6 +5,7 @@ let mainWindow;
 let resumeWindow = null; // Resume Generator window
 let jobsWindow = null; // Jobs window
 let searchProfilesWindow = null; // Search Profiles window
+let selectionWindow = null; // Startup User Selection window
 
 function createWindow() {
   const { screen } = require('electron');
@@ -55,6 +56,33 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+}
+
+// User Selection Window (Startup)
+function createSelectionWindow() {
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+
+  selectionWindow = new BrowserWindow({
+    width: 600,
+    height: 500,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000', // Transparent for rounded corners
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  selectionWindow.loadFile('renderer/windows/user-selection/user-selection.html');
+  
+  selectionWindow.on('closed', () => {
+    selectionWindow = null;
   });
 }
 
@@ -186,8 +214,62 @@ ipcMain.on('open-job-search', () => {
 });
 
 
-app.on('ready', () => {
+// IPC Handler for User Selection Launch
+ipcMain.on('user-selected-launch', () => {
+  // Create main window FIRST, then close selection
+  // This prevents app.quit() from triggering due to 0 windows
   createWindow();
+  if (selectionWindow) {
+    selectionWindow.close();
+  }
+});
+
+// User Management window
+let userManagementWindow = null;
+function createUserManagementWindow() {
+  if (userManagementWindow) {
+    userManagementWindow.focus();
+    return;
+  }
+
+  userManagementWindow = new BrowserWindow({
+    width: 1000,
+    height: 700,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    },
+    title: 'Gerenciamento de Usuários - PassAI',
+    backgroundColor: '#0f172a'
+  });
+
+  userManagementWindow.loadFile('renderer/windows/user-management/user-management.html');
+
+  userManagementWindow.on('closed', () => {
+    userManagementWindow = null;
+  });
+}
+
+ipcMain.on('open-user-manager-setup', () => {
+  if (selectionWindow) {
+    selectionWindow.close();
+  }
+  createUserManagementWindow();
+});
+
+// Also allow opening from main app
+ipcMain.on('open-user-management', () => {
+  createUserManagementWindow();
+});
+
+// Handler to go back to selection window (from user management)
+ipcMain.on('show-selection-window', () => {
+  createSelectionWindow();
+});
+
+app.on('ready', () => {
+  createSelectionWindow();
   
   // Global hotkeys
   const registered = {
