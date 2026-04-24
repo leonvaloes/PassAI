@@ -12,6 +12,8 @@ ENV/
 
 # Node
 node_modules/
+frontend/dist/
+.run/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -50,6 +52,11 @@ linkedin_cookies.pkl
 
 # Artifacts (personal notes)
 .gemini/
+.tmp_test/
+.tmp_*/
+tmp_*/
+output/generated/
+frontend/frontend/.tmp_*
 
 # Debug and temporary scripts
 check_*.py

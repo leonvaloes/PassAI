@@ -1,758 +1,275 @@
-"""
-Backend API Server - SIMPLE VERSION
+from __future__ import annotations
 
-Single microphone capture with AI chat support.
-"""
-
-import logging
-from typing import Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-import uvicorn
-import threading
 import os
-from datetime import datetime
-
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent))
 
-from core.capture.audio_capture import AudioCapture, AudioConfig
-from core.processing.asr_pipeline import ASRPipeline, ASRConfig
-from core.intelligence.conversation_manager_v2 import ConversationManager
-from core.llm.router import LLMRouter, LLMConfig, LLMProvider
-from core.utils.config import load_config
-from core.utils.logger import setup_logging
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
-logger = logging.getLogger(__name__)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-app = FastAPI(title="PassAI", version="2.1")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+from backend.app_models import (  # noqa: E402
+    GenerateRequest,
+    HistoryResponse,
+    JobCreateRequest,
+    JobResponse,
+    SetActiveUserRequest,
+    UserProfileCreate,
+    UserProfileList,
+    UserProfileResponse,
+    UserProfileUpdate,
+    VariantResponse,
 )
-
-# Import and include Resume API routes
-from api.resume import router as resume_router, init_resume_system
-app.include_router(resume_router)
-
-# Import and include User Management API routes
-from api.users.routes import router as users_router
-app.include_router(users_router)
-
-# Import and include Profile API routes
-from api.profile import router as profile_router, init_profile_system
-app.include_router(profile_router)
-
-# Import and include Jobs API routes
-# IMPORTANT: Register search_router FIRST to avoid path conflicts
-# (search_router has /profiles, jobs_router has /{job_id} which would catch it)
-from api.jobs import router as jobs_router, init_jobs_system, search_router, init_search_system
-app.include_router(search_router)  # Register specific routes first
-app.include_router(jobs_router)    # Register generic routes second
+from backend.app_store import JsonStore  # noqa: E402
+from backend.cv_service import ResumeService  # noqa: E402
 
 
+def create_app(
+    data_file: str | None = None,
+    output_dir: str | None = None,
+    enable_llm: bool | None = None,
+) -> FastAPI:
+    resolved_data_file = data_file or os.getenv(
+        "PASSAI_DATA_FILE", str(PROJECT_ROOT / "data" / "passai_state.json")
+    )
+    resolved_output_dir = output_dir or os.getenv("PASSAI_OUTPUT_DIR", str(PROJECT_ROOT / "output" / "generated"))
+    resolved_enable_llm = enable_llm if enable_llm is not None else (data_file is None and output_dir is None)
 
+    store = JsonStore(resolved_data_file)
+    resume_service = ResumeService(resolved_output_dir, enable_llm=resolved_enable_llm)
 
-from core.ai.vision_processor import VisionProcessor
+    app = FastAPI(title="PassAI", version="3.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-class SimpleBackend:
-    """Simple backend with mic capture and AI chat"""
-    def __init__(self):
-        self.config = load_config()
-        self.websocket: Optional[WebSocket] = None
-        self.is_paused = False
-        self.ws_lock = threading.Lock()
-        
-        logger.info("Initializing...")
-        
-        # Conversation manager
-        self.conversation = ConversationManager()
-        
-        # AI Chat history
-        self.ai_chat_history = []
-        
-        # ASR (using 'base' for faster loading)
-        self.asr = ASRPipeline(config=ASRConfig(model_size='base', language='pt'))
-        
-        # LLM
-        self.llm_router = LLMRouter(config=LLMConfig(default_provider=LLMProvider.OLLAMA))
-        
-        # Vision AI
-        self.vision_processor = VisionProcessor()
-        self.last_screenshot_path: Optional[str] = None
-        
-        # Audio capture mode
-        self.capture_active = False
-        self.system_audio_enabled = False
-        self.audio_capture = None
-        self.dual_capture = None
-        self.system_capture = None  # For system audio only
-        
-        # Start with single mic capture
-        self._init_mic_capture()
-        
-        logger.info("✅ Ready (Captura parada - clique 'Iniciar Captura')")
-    
-    def _init_mic_capture(self):
-        """Initialize microphone-only capture"""
-        if self.dual_capture:
-            self.dual_capture.stop()
-            self.dual_capture = None
-        
-        self.audio_capture = AudioCapture(
-            config=AudioConfig(sample_rate=16000),
-            callback=self._on_audio
+    def serialize_user(user: dict) -> UserProfileResponse:
+        return UserProfileResponse(**user)
+
+    def serialize_job(job: dict) -> JobResponse:
+        return JobResponse(
+            id=job["id"],
+            cargo=job["cargo"],
+            empresa=job["empresa"],
+            ats_detectado=job["ats_detectado"],
+            requisitos_tecnicos=job["requisitos_tecnicos"],
+            requisitos_comportamentais=job["requisitos_comportamentais"],
+            local=job.get("local"),
+            modalidade=job.get("modalidade"),
         )
-        logger.info("Using microphone-only capture")
-    
-    def _init_dual_capture(self):
-        """Initialize mic + system audio capture (separate streams)"""
-        logger.info("=" * 50)
-        logger.info("INITIALIZING MIC + SYSTEM AUDIO CAPTURE")
-        logger.info("=" * 50)
-        
+
+    def serialize_variant(variant: dict) -> VariantResponse:
+        return VariantResponse(
+            id=variant["id"],
+            job_id=variant["job_id"],
+            round=variant["round"],
+            ats_score=variant["ats_score"],
+            ats_status=variant["ats_status"],
+            ranking_score=variant["ranking_score"],
+            motivos=variant["motivos"],
+            content=variant["content"],
+            created_at=variant["created_at"],
+        )
+
+    @app.get("/health")
+    async def health() -> dict:
+        state = store.snapshot()
+        return {
+            "status": "ok",
+            "users": len(state["users"]),
+            "jobs": len(state["jobs"]),
+            "variants": len(state["variants"]),
+            "features": ["resume_generation", "user_management"],
+        }
+
+    @app.get("/api/users", response_model=UserProfileList)
+    async def list_users() -> UserProfileList:
+        users = [serialize_user(user) for user in store.list_users()]
+        return UserProfileList(users=users, total=len(users), active_user_id=store.get_active_user_id())
+
+    @app.post("/api/users", response_model=UserProfileResponse, status_code=201)
+    async def create_user(payload: UserProfileCreate) -> UserProfileResponse:
         try:
-            # Keep mic capture running
-            if not self.audio_capture:
-                logger.info("Starting microphone capture...")
-                self.audio_capture = AudioCapture(
-                    config=AudioConfig(sample_rate=16000),
-                    callback=self._on_audio
+            user = store.create_user(payload.model_dump())
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return serialize_user(user)
+
+    @app.get("/api/users/{user_id}", response_model=UserProfileResponse)
+    async def get_user(user_id: str) -> UserProfileResponse:
+        user = store.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        return serialize_user(user)
+
+    @app.put("/api/users/{user_id}", response_model=UserProfileResponse)
+    async def update_user(user_id: str, payload: UserProfileUpdate) -> UserProfileResponse:
+        update_data = {key: value for key, value in payload.model_dump().items() if value is not None}
+        try:
+            user = store.update_user(user_id, update_data)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"User {user_id} not found") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return serialize_user(user)
+
+    @app.delete("/api/users/{user_id}", status_code=204)
+    async def delete_user(user_id: str) -> None:
+        if not store.get_user(user_id):
+            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        store.delete_user(user_id)
+
+    @app.get("/api/users/active/current", response_model=UserProfileResponse)
+    async def get_active_user() -> UserProfileResponse:
+        active_user_id = store.get_active_user_id()
+        if not active_user_id:
+            raise HTTPException(status_code=404, detail="No active user set. Please create or select a user first.")
+        user = store.get_user(active_user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Active user not found")
+        return serialize_user(user)
+
+    @app.put("/api/users/active/set")
+    async def set_active_user(payload: SetActiveUserRequest) -> dict:
+        user = store.get_user(payload.user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail=f"User {payload.user_id} not found")
+        store.set_active_user_id(payload.user_id)
+        return {
+            "success": True,
+            "active_user_id": payload.user_id,
+            "message": f"Active user set to: {user['nome']}",
+        }
+
+    @app.post("/api/resume/jobs", response_model=JobResponse)
+    async def create_job(payload: JobCreateRequest) -> JobResponse:
+        parsed_job = resume_service.parse_job(payload.content, payload.input_type)
+        job = store.create_job(parsed_job)
+        return serialize_job(job)
+
+    @app.get("/api/resume/jobs/{job_id}", response_model=JobResponse)
+    async def get_job(job_id: str) -> JobResponse:
+        job = store.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return serialize_job(job)
+
+    @app.delete("/api/resume/jobs/{job_id}")
+    async def delete_job(job_id: str) -> dict:
+        if not store.get_job(job_id):
+            raise HTTPException(status_code=404, detail="Job not found")
+        store.delete_job(job_id)
+        return {"message": "Job deleted successfully"}
+
+    def create_variants_for_job(job_id: str, count: int, replace: bool = False) -> dict:
+        job = store.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        active_user_id = store.get_active_user_id()
+        if not active_user_id:
+            raise HTTPException(status_code=400, detail="No active user set. Please create or select a user first.")
+
+        user = store.get_user(active_user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="Active user not found")
+
+        existing_variants = store.list_variants(job_id)
+        variants = resume_service.generate_variants(
+            user=user,
+            job=job,
+            count=count,
+            existing_count=0 if replace else len(existing_variants),
+        )
+        store.save_variants(job_id, variants, replace=replace)
+        return {
+            "message": "Generation completed",
+            "job_id": job_id,
+            "generated_variants": len(variants),
+            "total_variants": len(store.list_variants(job_id)),
+        }
+
+    @app.post("/api/resume/jobs/{job_id}/generate")
+    async def generate_variants(job_id: str, payload: GenerateRequest) -> dict:
+        count = payload.count or 3
+        return create_variants_for_job(job_id, count=count, replace=True)
+
+    @app.post("/api/resume/jobs/{job_id}/generate-more")
+    async def generate_more_variants(job_id: str, count: int = 3) -> dict:
+        return create_variants_for_job(job_id, count=count, replace=False)
+
+    @app.get("/api/resume/jobs/{job_id}/variants", response_model=list[VariantResponse])
+    async def list_variants(job_id: str) -> list[VariantResponse]:
+        if not store.get_job(job_id):
+            raise HTTPException(status_code=404, detail="Job not found")
+        return [serialize_variant(variant) for variant in store.list_variants(job_id)]
+
+    @app.get("/api/resume/variants/{variant_id}", response_model=VariantResponse)
+    async def get_variant(variant_id: str) -> VariantResponse:
+        variant = store.get_variant(variant_id)
+        if not variant:
+            raise HTTPException(status_code=404, detail="Variant not found")
+        return serialize_variant(variant)
+
+    @app.delete("/api/resume/variants/{variant_id}")
+    async def delete_variant(variant_id: str) -> dict:
+        variant = store.get_variant(variant_id)
+        if not variant:
+            raise HTTPException(status_code=404, detail="Variant not found")
+        output_path = Path(variant["output_path"])
+        if output_path.exists():
+            output_path.unlink()
+        store.delete_variant(variant_id)
+        return {"message": "Variant deleted successfully"}
+
+    @app.get("/api/resume/variants/{variant_id}/download")
+    async def download_variant(variant_id: str) -> FileResponse:
+        variant = store.get_variant(variant_id)
+        if not variant:
+            raise HTTPException(status_code=404, detail="Variant not found")
+        output_path = resume_service.ensure_docx(variant)
+        return FileResponse(
+            path=output_path,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            filename=f"cv_{variant_id}.docx",
+        )
+
+    @app.get("/api/resume/history", response_model=list[HistoryResponse])
+    async def history() -> list[HistoryResponse]:
+        jobs = store.list_jobs()
+        history_items = []
+        for job in jobs:
+            variants = store.list_variants(job["id"])
+            best_score = max((variant["ats_score"] for variant in variants), default=0.0)
+            history_items.append(
+                HistoryResponse(
+                    job_id=job["id"],
+                    job_title=job["cargo"],
+                    company=job["empresa"],
+                    created_at=job["created_at"],
+                    variants_count=len(variants),
+                    best_score=round(best_score, 1),
+                    status="completed" if variants else "no_cvs",
+                    has_cvs=bool(variants),
+                    source=job["input_type"],
                 )
-                self.audio_capture.start()
-            
-            # Add system audio capture with selected device
-            logger.info(f"Starting system audio capture with device index: {self.selected_output_device}")
-            from core.capture.system_audio_capture import SystemAudioCapture
-            
-            # Convert device index to int if it's a string
-            device_idx = None
-            if self.selected_output_device and self.selected_output_device != "default":
-                try:
-                    device_idx = int(self.selected_output_device)
-                except (ValueError, TypeError):
-                    logger.warning(f"Invalid device index: {self.selected_output_device}, using default")
-            
-            self.system_capture = SystemAudioCapture(
-                callback=self._on_audio_with_speaker,
-                sample_rate=16000,
-                device_index=device_idx,  # Pass specific device or None for default
-                config=self.config
             )
-            self.system_capture.start()
-            
-            logger.info("✅ Dual capture initialized successfully!")
-            logger.info("=" * 50)
-            
-        except ImportError as e:
-            logger.error(f"❌ Failed to import SystemAudioCapture: {e}")
-            logger.error("PyAudioWPatch might not be installed")
-            logger.info("Falling back to mic-only")
-            if not self.audio_capture:
-                self._init_mic_capture()
-        except Exception as e:
-            logger.error(f"❌ Failed to init system capture: {e}")
-            logger.error(f"Error type: {type(e).__name__}")
-            import traceback
-            logger.error(traceback.format_exc())
-            logger.info("Mic capture will continue, system audio disabled")
-    
-    def _on_audio_with_speaker(self, audio, sample_rate, speaker):
-        """Callback that includes speaker info (for system audio)"""
-        if not self.capture_active or self.is_paused:
-            return
-        
-        # Calculate and send audio level
-        audio_level = self._calculate_audio_level(audio)
-        source = "you" if speaker == "YOU" else "other"
-        self._send_ws({
-            "type": "audio_level",
-            "data": {"source": source, "level": audio_level}
-        })
-        
-        # Process transcription
-        self._process_audio(audio, sample_rate, speaker)
-    
-    def _on_audio(self, audio, sample_rate):
-        """Audio callback"""
-        if not self.capture_active or self.is_paused:
-            return
-        
-        # Calculate and send audio level for meter
-        audio_level = self._calculate_audio_level(audio)
-        self._send_ws({
-            "type": "audio_level",
-            "data": {"source": "you", "level": audio_level}
-        })
-        
-        self._process_audio(audio, sample_rate, "YOU")
-    
-    def _on_dual_audio(self, audio, sample_rate, speaker):
-        """Dual audio callback (includes speaker info)"""
-        if not self.capture_active or self.is_paused:
-            return
-        
-        # Calculate and send audio level
-        audio_level = self._calculate_audio_level(audio)
-        source = "you" if speaker == "YOU" else "other"
-        self._send_ws({
-            "type": "audio_level",
-            "data": {"source": source, "level": audio_level}
-        })
-        
-        # Process transcription
-        self._process_audio(audio, sample_rate, speaker)
-    
-    def _process_audio(self, audio, sample_rate, speaker):
-        """Process audio"""
-        try:
-            self._send_ws({"type": "status", "data": {"status": f"🎤 Transcribing..."}})
-            
-            result = self.asr.transcribe(audio, sample_rate)
-            text = result['text']
-            
-            message = self.conversation.add_message(text=text, speaker=speaker)
-            
-            self._send_ws({
-                "type": "conversation_message",
-                "data": message.to_dict()
-            })
-            
-            self._send_ws({"type": "status", "data": {"status": "🟢 Ready"}})
-            
-        except Exception as e:
-            logger.error(f"Error: {e}", exc_info=True)
-            self._send_ws({"type": "status", "data": {"status": f"❌ Error"}})
-    
-    def _calculate_audio_level(self, audio):
-        """Calculate audio level (0-100) for audio meters"""
-        import numpy as np
-        if audio.dtype == np.int16:
-            audio_normalized = audio.astype(np.float32) / 32768.0
-        else:
-            audio_normalized = audio
-        rms = np.sqrt(np.mean(audio_normalized ** 2))
-        return min(100, int(rms * 500))
-    
-    def analyze_conversation(self, custom_prompt: str = ""):
-        """Analyze conversation"""
-        try:
-            self._send_ws({"type": "status", "data": {"status": "🤖 Analyzing..."}})
-            
-            dialogue = self.conversation.get_formatted_dialogue()
-            
-            if not custom_prompt:
-                custom_prompt = "Analise esta conversa:"
-            
-            full_prompt = f"""{custom_prompt}
+        return sorted(history_items, key=lambda item: item.created_at, reverse=True)
 
-{dialogue}
-
-Análise:
-"""
-            
-            history = [{"speaker": "user", "text": full_prompt}]
-            
-            response = self.llm_router.generate_suggestion(
-                conversation_history=history,
-                current_intent="analysis",
-                user_goal="Analyze"
-            )
-            
-            # Send as AI chat message
-            self._send_ws({
-                "type": "ai_chat_response",
-                "data": {"text": f"📊 Análise:\n{response['suggestion']}"}
-            })
-            
-            self._send_ws({"type": "status", "data": {"status": "🟢 Ready"}})
-            
-        except Exception as e:
-            logger.error(f"Analysis error: {e}", exc_info=True)
-            self._send_ws({"type": "status", "data": {"status": "❌ Failed"}})
-    
-    def handle_ai_chat(self, question: str):
-        """Handle AI chat with Optional Vision Support"""
-        try:
-            self._send_ws({"type": "status", "data": {"status": "🤖 Thinking..."}})
-            
-            # Use Vision AI if we have an active screenshot
-            image_path = self.last_screenshot_path
-            vision_context = ""
-            
-            if image_path and os.path.exists(image_path):
-                # Check cache first
-                if hasattr(self, 'current_image_description') and self.current_image_description and self.current_image_path == image_path:
-                    logger.info(f"Using CACHED Vision Description for: {os.path.basename(image_path)}")
-                    description = self.current_image_description
-                    vision_result = {"success": True} # Simulated success
-                else:
-                    logger.info(f"Generating NEW Vision Description for: {os.path.basename(image_path)}")
-                    self._send_ws({"type": "status", "data": {"status": "👁️ Analisando Contexto Visual..."}})
-                    
-                    # Get pure description from Vision Model
-                    vision_result = self.vision_processor.get_detailed_description(image_path)
-                    
-                    if vision_result["success"]:
-                        description = vision_result["description"]
-                        # Cache it
-                        self.current_image_description = description
-                        self.current_image_path = image_path
-                        logger.info("✅ Vision Description Cached")
-                
-                if vision_result["success"]:
-                    vision_context = f"""
-[CONTEXTO VISUAL - DESCRIÇÃO DA IMAGEM ATUAL]
-A seguinte descrição foi gerada por um modelo de visão AI sobre a imagem que o usuário enviou:
----
-{description}
----
-[FIM DO CONTEXTO VISUAL]
-Use esta descrição para responder à pergunta do usuário como se você pudesse ver a imagem.
-"""
-                else:
-                    logger.error(f"Vision failed: {vision_result.get('error')}")
-                    vision_context = f"[ERRO NA ANÁLISE VISUAL: {vision_result.get('error')}]"
-
-            # Prepare user message with context
-            full_user_message = f"{vision_context}\n\n{question}" if vision_context else question
-            
-            self.ai_chat_history.append({"speaker": "user", "text": full_user_message})
-            
-            # Send to Main LLM (Text-only Router)
-            response = self.llm_router.generate_suggestion(
-                conversation_history=self.ai_chat_history[-10:], # Keep last 10 turns
-                current_intent="chat",
-                user_goal="Answer"
-            )
-            
-            ai_response = response['suggestion']
-            
-            # CHECK FOR ACTIVE VISION REQUEST [LOOK: ...]
-            if "[LOOK:" in ai_response:
-                clean_response = ai_response # Fallback
-                try:
-                    import re
-                    match = re.search(r"\[LOOK:\s*(.*?)\]", ai_response)
-                    
-                    # ALWAYS strip the tag for the final user display, purely for cleanliness
-                    clean_response = re.sub(r"\[LOOK:\s*.*?\]", "", ai_response).strip()
-                    if not clean_response:
-                        clean_response = "Hmmm..." # Loading placeholder if empty
-
-                    if match and image_path:
-                        query = match.group(1).strip()
-                        print("\n" + "="*60)
-                        logger.info(f"🕵️‍♂️ ACTIVE VISION TRIGGERED")
-                        logger.info(f"❓ Question: {query}")
-                        self._send_ws({"type": "status", "data": {"status": f"👁️ Verificando: {query}..."}})
-                        
-                        # Query Vision AI
-                        vision_query_res = self.vision_processor.query_image(image_path, query)
-                        
-                        if vision_query_res["success"]:
-                            vision_answer = vision_query_res["answer"]
-                            logger.info(f"💡 Answer:   {vision_answer}")
-                            print("="*60 + "\n")
-                            
-                            # Feed back to Main LLM
-                            nav_update = f"""[TOOL RESULT]
-Vision Query: "{query}"
-Vision Answer: "{vision_answer}"
-Now answer the user's original question based on this new information."""
-                            
-                            self.ai_chat_history.append({"speaker": "system", "text": nav_update})
-                            
-                            # Re-prompt Main LLM
-                            response_final = self.llm_router.generate_suggestion(
-                                conversation_history=self.ai_chat_history[-10:],
-                                current_intent="chat",
-                                user_goal="Answer"
-                            )
-                            ai_response = response_final['suggestion']
-                        else:
-                            # Vision Failed
-                            logger.warning("Active vision query failed")
-                            ai_response = f"{clean_response}\n\n(Não consegui ver os detalhes: {vision_query_res.get('error')})"
-                    
-                    elif match and not image_path:
-                         # Tag triggered but no image
-                         logger.warning("Active vision triggered but NO IMAGE active")
-                         ai_response = f"{clean_response}\n\n(Eu preciso que você capture um screenshot para eu ver isso.)"
-                    else:
-                         # Regex match failed but tag present?
-                         ai_response = clean_response
-
-                except Exception as ex:
-                    logger.error(f"Re-Act Loop Error: {ex}")
-                    ai_response = clean_response # Safe fallback
-            
-            self.ai_chat_history.append({"speaker": "assistant", "text": ai_response})
-            
-            self._send_ws({
-                "type": "ai_chat_response",
-                "data": {"text": ai_response}
-            })
-            
-            self._send_ws({"type": "status", "data": {"status": "🟢 Ready"}})
-            
-        except Exception as e:
-            logger.error(f"Chat error: {e}", exc_info=True)
-            
-            # Send helpful error message to user
-            error_msg = "⚠️ LLM não disponível. Verifique se o Ollama está rodando (http://localhost:11434) ou configure OpenAI API key."
-            self._send_ws({
-                "type": "ai_chat_response",
-                "data": {"text": error_msg}
-            })
-            self._send_ws({"type": "status", "data": {"status": "⚠️ LLM Offline"}})
-    
-    def _send_ws(self, data):
-        """Send WebSocket"""
-        with self.ws_lock:
-            if self.websocket:
-                try:
-                    import asyncio
-                    loop = asyncio.new_event_loop()
-                    loop.run_until_complete(self.websocket.send_json(data))
-                    loop.close()
-                except:
-                    pass
+    return app
 
 
-backend = SimpleBackend()
+app = create_app()
 
-
-@app.get("/api/audio-devices")
-async def get_audio_devices():
-    """Get list of available audio devices (input, output, and loopback)"""
-    try:
-        import sounddevice as sd
-        
-        logger.info("Querying audio devices...")
-        devices = sd.query_devices()
-        logger.info(f"sounddevice found {len(devices) if devices is not None else 0} devices")
-        
-        audio_inputs = []
-        audio_outputs = []
-        loopback_devices = []
-        
-        # Get regular devices from sounddevice
-        if devices is not None:
-            for i, device in enumerate(devices):
-                logger.debug(f"Device {i}: {device['name']} - In:{device['max_input_channels']} Out:{device['max_output_channels']}")
-                device_info = {
-                    'index': i,
-                    'name': device['name'],
-                    'channels': device['max_input_channels'] or device['max_output_channels'],
-                    'sample_rate': device['default_samplerate']
-                }
-                
-                if device['max_input_channels'] > 0:
-                    audio_inputs.append(device_info)
-                
-                if device['max_output_channels'] > 0:
-                    audio_outputs.append(device_info)
-                
-                # Check if it's a loopback device (usually has "Stereo Mix" or "What U Hear" in name)
-                name_lower = device['name'].lower()
-                if any(keyword in name_lower for keyword in ['stereo mix', 'what u hear', 'wave out', 'loopback']):
-                    loopback_info = device_info.copy()
-                    loopback_info['isLoopback'] = True
-                    loopback_devices.append(loopback_info)
-        
-        logger.info(f"Found {len(audio_inputs)} inputs, {len(audio_outputs)} outputs, {len(loopback_devices)} loopbacks")
-        
-        return {
-            'inputs': audio_inputs,
-            'outputs': audio_outputs,
-            'loopbacks': loopback_devices
-        }
-    except Exception as e:
-        logger.error(f"Failed to get audio devices: {e}")
-        import traceback
-        traceback.print_exc()
-        return {'inputs': [], 'outputs': [], 'loopbacks': []}
-
-
-@app.on_event("startup")
-async def startup():
-    logger.info("🚀 Starting...")
-    if backend.audio_capture:
-        backend.audio_capture.start()
-    elif backend.dual_capture:
-        backend.dual_capture.start()
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    logger.info("🛑 Stopping...")
-    if backend.audio_capture:
-        backend.audio_capture.stop()
-    if backend.dual_capture:
-        backend.dual_capture.stop()
-
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    backend.websocket = websocket
-    logger.info("✅ WebSocket connected")
-    
-    try:
-        await websocket.send_json({"type": "status", "data": {"status": "🟢 Ready"}})
-        
-        for message in backend.conversation.get_messages():
-            await websocket.send_json({
-                "type": "conversation_message",
-                "data": message
-            })
-        
-        while True:
-            data = await websocket.receive_json()
-            
-            if data.get("type") == "ai_chat":
-                question = data.get("data", {}).get("question", "")
-                if question:
-                    threading.Thread(
-                        target=backend.handle_ai_chat,
-                        args=(question,)
-                    ).start()
-            
-            elif data.get("type") == "command":
-                action = data.get("data", {}).get("action")
-                
-                if action == "start_capture":
-                    backend.capture_active = True
-                    await websocket.send_json({
-                        "type": "status",
-                        "data": {"status": "🎙️ Capturando áudio..."}
-                    })
-                    logger.info("🎙️ Audio capture STARTED")
-                    
-                elif action == "stop_capture":
-                    backend.capture_active = False
-                    await websocket.send_json({
-                        "type": "status",
-                        "data": {"status": "⏸️ Captura pausada"}
-                    })
-                    logger.info("⏹️ Audio capture STOPPED")
-                
-                elif action == "toggle_system_audio":
-                    command_data = data.get("data", {})
-                    enabled = command_data.get("enabled", False)
-                    output_device = command_data.get("output_device", "default")
-                    
-                    logger.info(f"Toggle system audio: {enabled}, device: {output_device}")
-                    
-                    backend.system_audio_enabled = enabled
-                    backend.selected_output_device = output_device
-                    was_active = backend.capture_active
-                    
-                    if was_active:
-                        if backend.audio_capture:
-                            backend.audio_capture.stop()
-                        if backend.dual_capture:
-                            backend.dual_capture.stop()
-                    
-                    if enabled and output_device != "default":
-                        logger.info(f"Initializing dual capture with output device: {output_device}")
-                        backend._init_dual_capture()
-                    else:
-                        logger.info("Using mic-only capture")
-                        backend._init_mic_capture()
-                    
-                    if was_active:
-                        if backend.dual_capture:
-                            backend.dual_capture.start()
-                        elif backend.audio_capture:
-                            backend.audio_capture.start()
-                    
-                    status = f"🔊 Sistema (device {output_device}) + Mic" if enabled else "🎙️ Só microfone"
-                    await websocket.send_json({"type": "status", "data": {"status": status}})
-                
-                elif action == "pause":
-                    backend.is_paused = True
-                    await websocket.send_json({"type": "status", "data": {"status": "⏸️ Paused"}})
-                    
-                elif action == "resume":
-                    backend.is_paused = False
-                    await websocket.send_json({"type": "status", "data": {"status": "🟢 Resumed"}})
-                    
-                elif action == "clear":
-                    backend.conversation.clear()
-                    backend.ai_chat_history = []  # Also clear AI chat history
-                    backend.last_screenshot_path = None  # Clear Vision Context
-                    backend.current_image_description = None # Clear Cache
-                    backend.current_image_path = None
-                    logger.info("🧹 Conversation and Context cleared")
-                    await websocket.send_json({"type": "conversation_cleared"})
-                    await websocket.send_json({"type": "status", "data": {"status": "🧹 Cleared"}})
-                    
-                elif action == "save":
-                    try:
-                        md = backend.conversation.export_markdown()
-                        import os
-                        os.makedirs("conversations", exist_ok=True)
-                        filename = f"conversations/conv_{backend.conversation.conversation_id}.md"
-                        with open(filename, 'w', encoding='utf-8') as f:
-                            f.write(md)
-                        await websocket.send_json({"type": "status", "data": {"status": "💾 Saved!"}})
-                    except Exception as e:
-                        logger.error(f"Save error: {e}")
-                        await websocket.send_json({"type": "status", "data": {"status": "❌ Failed"}})
-                
-                elif action == "analyze":
-                    threading.Thread(
-                        target=backend.analyze_conversation,
-                        args=("",)
-                    ).start()
-                        
-    except WebSocketDisconnect:
-        logger.info("WebSocket disconnected")
-        backend.websocket = None
-
-
-@app.get("/health")
-async def health():
-    return {
-        "status": "ok",
-        "gpu": backend.asr.config.device == "cuda",
-        "messages": len(backend.conversation.messages)
-    }
-
-
-# Screenshot API Endpoints
-from core.capture.screenshot_capture import ScreenshotCapture
-from pydantic import BaseModel
-
-
-class ScreenshotRequest(BaseModel):
-    monitor: int = 0  # 0 = all monitors, 1+ = specific monitor
-    analyze: bool = False  # Future: vision analysis
-
-
-@app.post("/api/screenshot")
-async def capture_screenshot(request: ScreenshotRequest):
-    """Capture screenshot"""
-    try:
-        # Initialize on demand to avoid startup issues
-        screenshot_capture = ScreenshotCapture()
-        filepath, img = screenshot_capture.capture_screen(request.monitor)
-        
-        if filepath is None:
-            return {
-                "success": False,
-                "error": "Failed to capture screenshot"
-            }
-        
-        result = {
-            "success": True,
-            "filepath": filepath,
-            "filename": os.path.basename(filepath),
-            "timestamp": datetime.now().isoformat(),
-            "size": {
-                "width": img.size[0],
-                "height": img.size[1]
-            }
-        }
-        
-        # Future: Add vision analysis here if request.analyze is True
-        
-        logger.info(f"📸 Screenshot captured: {filepath}")
-        
-        # Store context for Vision AI
-        backend.last_screenshot_path = filepath
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Screenshot capture error: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-
-@app.get("/api/screenshots")
-async def list_screenshots(limit: int = 20):
-    """List recent screenshots"""
-    try:
-        screenshot_capture = ScreenshotCapture()
-        screenshots = screenshot_capture.list_screenshots(limit)
-        return {
-            "success": True,
-            "screenshots": screenshots,
-            "count": len(screenshots)
-        }
-    except Exception as e:
-        logger.error(f"List screenshots error: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-
-@app.get("/api/monitors")
-async def get_monitors():
-    """Get available monitors"""
-    try:
-        screenshot_capture = ScreenshotCapture()
-        monitors = screenshot_capture.get_monitors()
-        return {
-            "success": True,
-            "monitors": monitors,
-            "count": len(monitors)
-        }
-    except Exception as e:
-        logger.error(f"Get monitors error: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-
-
-
-# Serve screenshot files
-screenshots_dir = os.path.join(os.path.dirname(__file__), "screenshots")
-os.makedirs(screenshots_dir, exist_ok=True)
-app.mount("/screenshots", StaticFiles(directory=screenshots_dir), name="screenshots")
 
 if __name__ == "__main__":
-    setup_logging({'logging': {'level': 'INFO'}})
-    
-    # Initialize Resume Generator system
-    try:
-        init_resume_system()
-        logger.info("✅ Resume Generator API initialized")
-    except Exception as e:
-        logger.warning(f"⚠️ Resume Generator initialization failed: {e}")
-    
-    # Initialize Profile Chat system
-    try:
-        init_profile_system()
-        logger.info("✅ Profile Chat API initialized")
-    except Exception as e:
-        logger.warning(f"⚠️ Profile Chat initialization failed: {e}")
-    
-    # Initialize Job Aggregator system
-    try:
-        init_jobs_system()
-        logger.info("✅ Job Aggregator API initialized")
-    except Exception as e:
-        logger.warning(f"⚠️ Job Aggregator initialization failed: {e}")
-    
-    # Initialize Search Profiles system
-    try:
-        init_search_system()
-        logger.info("✅ Search Profiles API initialized")
-    except Exception as e:
-        logger.warning(f"⚠️ Search Profiles initialization failed: {e}")
-    
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

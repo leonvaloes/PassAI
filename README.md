@@ -1,66 +1,49 @@
-# 🚀 PassAI - AI-Powered Development Assistant
+# PassAI
 
-Assistente de desenvolvimento com transcrição em tempo real, Vision AI e chat inteligente.
+Projeto simplificado para duas funcionalidades:
 
-## ✨ Features
+- geracao de CV
+- gerenciamento de usuarios
 
-- 🎙️ **Captura de Microfone** - Transcrição instantânea em PT-BR
-- 🔊 **Captura de Áudio do Sistema** - Transcrição de apps/YouTube/reuniões
-- 👁️ **Vision AI** - Análise de screenshots com LLaVA
-- 🤖 **Chat Inteligente** - Integração com Ollama/OpenAI
-- 🪟 **Interface Flutuante** - Always-on-top, transparente
-- 📊 **Medidores em Tempo Real** - Visualização de áudio
+## Stack
 
-## 🚀 Quick Start
+- backend: FastAPI
+- frontend: React + Vite
+- armazenamento: JSON local
+- saida de CV: DOCX
 
-### Método Rápido (Recomendado)
+## Subir
+
 ```bash
-.\start.bat
+./start.sh
 ```
 
-### Manual
+Servicos:
 
-**Backend:**
+- frontend: `http://127.0.0.1:5173`
+- backend: `http://127.0.0.1:8000`
+
+## Derrubar
+
 ```bash
-cd d:\p2\ai-copilot
-venv\Scripts\activate
-python backend\server.py
+./stop.sh
 ```
 
-**Frontend:**
-```bash
-cd frontend
-npm start
-```
+## Estrutura
 
-## ⚙️ Configuração
+- `backend/server.py`: API principal
+- `backend/app_store.py`: persistencia local
+- `backend/cv_service.py`: geracao e exportacao de CV
+- `frontend/src/App.jsx`: interface principal
 
-- **Config:** `backend/config/config.yaml`
-- **Modelo ASR:** Whisper Large
-- **Vision AI:** LLaVA (via Ollama)
-- **Ganho Áudio Sistema:** Adaptativo (8-20x)
+## Requisitos
 
-## 📝 Documentação
+- Python 3.11+
+- Node.js 20+
+- ambiente virtual em `venv/`
 
-Ver `PROJECT_STATUS.md` para documentação completa.
+## Observacoes
 
-## 🔧 Troubleshooting
-
-**Porta 8000 em uso:**
-```bash
-taskkill /F /IM python.exe
-```
-
-**Ollama não conecta:**
-- Verificar se Ollama está rodando: `http://localhost:11434`
-- Instalar modelos: `ollama pull llama3.1:8b` e `ollama pull llava`
-
-## 📊 Stack
-
-- **Backend:** Python, FastAPI, Whisper, PyAudioWPatch, LLaVA
-- **Frontend:** Electron, JavaScript
-- **IA:** Ollama (Llama 3.1, LLaVA) / OpenAI
-
----
-
-**PassAI** - Desenvolvido com foco em produtividade e IA multimodal em tempo real.
+- o projeto nao possui audio, transcricao, vision, chat, scraping ou filas
+- o script `start.sh` grava PIDs em `.run/`
+- o script `stop.sh` encerra backend e frontend usando esses PIDs

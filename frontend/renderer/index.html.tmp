@@ -1,8 +1,0 @@
-          <div id="screenshotMenu" class="screenshot-menu hidden">
-            <button onclick="captureFullScreen()">🖥️ Tela Cheia</button>
-            <button onclick="captureRegion()">✂️ Selecionar Região</button>
-            <button onclick="captureAndAnalyze()">🤖 Capturar e Analisar</button>
-          </div>
-        </div>
-      </div>
-    </div>
