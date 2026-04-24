@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -80,20 +80,120 @@ INVALID_SKILL_MARKERS = {
 }
 
 RAG_CONTEXT = """
-- ATS prioriza aderencia literal a tecnologias, stacks, cloud, banco de dados e termos operacionais.
-- Preserve empresas, cargos e periodos do curriculo original.
-- Tecnologias da vaga devem ser distribuidas entre resumo, habilidades e experiencias de forma natural.
-- Bullets precisam ser tecnicos, especificos e plausiveis, evitando genericidade.
-- Priorize linguagem direta, vocabulario de engenharia de software e contexto real de produto/sistema.
-- Se a vaga mencionar arquitetura, qualidade, design patterns, CI/CD, observabilidade ou cloud, inclua isso nas experiencias.
-- Resumes de software engineers com melhor desempenho normalmente combinam verbos fortes, ownership claro, stack explicita e impacto mensuravel ou operacional.
-- Para humanos e ATS, prefira bullets escaneaveis com acao, contexto, tecnologias, colaboracao e resultado no mesmo item.
+- ATS prioriza aderÃªncia literal a tecnologias, stacks, cloud, banco de dados e termos operacionais.
+- Preserve empresas, cargos e perÃ­odos do currÃ­culo original.
+- Tecnologias da vaga devem ser distribuÃ­das entre resumo, habilidades e experiÃªncias de forma natural.
+- Bullets precisam ser tÃ©cnicos, especÃ­ficos e plausÃ­veis, evitando genericidade.
+- Priorize linguagem direta, vocabulÃ¡rio de engenharia de software e contexto real de produto/sistema.
+- Se a vaga mencionar arquitetura, qualidade, design patterns, CI/CD, observabilidade ou cloud, inclua isso nas experiÃªncias.
+- Resumes de software engineers com melhor desempenho normalmente combinam verbos fortes, ownership claro, stack explÃ­cita e impacto mensurÃ¡vel ou operacional.
+- Para humanos e ATS, prefira bullets escaneÃ¡veis com aÃ§Ã£o, contexto, tecnologias, colaboraÃ§Ã£o e resultado no mesmo item.
+- Todo o conteÃºdo final deve sair em portuguÃªs do Brasil, com acentuaÃ§Ã£o preservada e sem texto corrompido.
 """.strip()
 
 TEXT_COLOR = RGBColor(0x11, 0x11, 0x11)
 LINK_COLOR = RGBColor(0x2B, 0x5C, 0x9C)
 FONT_REGULAR = "Open Sans"
 FONT_ITALIC = "Nunito"
+
+PTBR_NORMALIZATION_MAP = {
+    "aderencia": "ader\u00eancia",
+    "aplicacao": "aplica\u00e7\u00e3o",
+    "aplicacoes": "aplica\u00e7\u00f5es",
+    "aprovacao": "aprova\u00e7\u00e3o",
+    "aprovacoes": "aprova\u00e7\u00f5es",
+    "analise": "an\u00e1lise",
+    "analises": "an\u00e1lises",
+    "area": "\u00e1rea",
+    "areas": "\u00e1reas",
+    "assincrona": "ass\u00edncrona",
+    "assincronas": "ass\u00edncronas",
+    "atuacao": "atua\u00e7\u00e3o",
+    "atuacoes": "atua\u00e7\u00f5es",
+    "automacao": "automa\u00e7\u00e3o",
+    "automacoes": "automa\u00e7\u00f5es",
+    "avaliacao": "avalia\u00e7\u00e3o",
+    "avaliacoes": "avalia\u00e7\u00f5es",
+    "cartao": "cart\u00e3o",
+    "cartoes": "cart\u00f5es",
+    "codigo": "c\u00f3digo",
+    "colaboracao": "colabora\u00e7\u00e3o",
+    "colaboracoes": "colabora\u00e7\u00f5es",
+    "comunicacao": "comunica\u00e7\u00e3o",
+    "comunicacoes": "comunica\u00e7\u00f5es",
+    "continua": "cont\u00ednua",
+    "continuas": "cont\u00ednuas",
+    "continuo": "cont\u00ednuo",
+    "continuos": "cont\u00ednuos",
+    "configuracao": "configura\u00e7\u00e3o",
+    "configuracoes": "configura\u00e7\u00f5es",
+    "consistencia": "consist\u00eancia",
+    "curriculo": "curr\u00edculo",
+    "curriculos": "curr\u00edculos",
+    "decisoes": "decis\u00f5es",
+    "descricao": "descri\u00e7\u00e3o",
+    "descricoes": "descri\u00e7\u00f5es",
+    "direcao": "dire\u00e7\u00e3o",
+    "documentacao": "documenta\u00e7\u00e3o",
+    "evolucao": "evolu\u00e7\u00e3o",
+    "evolucoes": "evolu\u00e7\u00f5es",
+    "experiencia": "experi\u00eancia",
+    "experiencias": "experi\u00eancias",
+    "funcao": "fun\u00e7\u00e3o",
+    "funcoes": "fun\u00e7\u00f5es",
+    "gestao": "gest\u00e3o",
+    "implementacao": "implementa\u00e7\u00e3o",
+    "implementacoes": "implementa\u00e7\u00f5es",
+    "implantacao": "implanta\u00e7\u00e3o",
+    "implantacoes": "implanta\u00e7\u00f5es",
+    "informacao": "informa\u00e7\u00e3o",
+    "informacoes": "informa\u00e7\u00f5es",
+    "integracao": "integra\u00e7\u00e3o",
+    "integracoes": "integra\u00e7\u00f5es",
+    "legiveis": "leg\u00edveis",
+    "manutencao": "manuten\u00e7\u00e3o",
+    "mudanca": "mudan\u00e7a",
+    "mudancas": "mudan\u00e7as",
+    "negocio": "neg\u00f3cio",
+    "negocios": "neg\u00f3cios",
+    "operacao": "opera\u00e7\u00e3o",
+    "operacoes": "opera\u00e7\u00f5es",
+    "otimizacao": "otimiza\u00e7\u00e3o",
+    "padrao": "padr\u00e3o",
+    "padroes": "padr\u00f5es",
+    "periodo": "per\u00edodo",
+    "periodos": "per\u00edodos",
+    "persistencia": "persist\u00eancia",
+    "plausiveis": "plaus\u00edveis",
+    "previsivel": "previs\u00edvel",
+    "previsiveis": "previs\u00edveis",
+    "pratica": "pr\u00e1tica",
+    "praticas": "pr\u00e1ticas",
+    "producao": "produ\u00e7\u00e3o",
+    "qualificacao": "qualifica\u00e7\u00e3o",
+    "refatoracao": "refatora\u00e7\u00e3o",
+    "reducao": "redu\u00e7\u00e3o",
+    "resolucao": "resolu\u00e7\u00e3o",
+    "revisao": "revis\u00e3o",
+    "revisoes": "revis\u00f5es",
+    "salario": "sal\u00e1rio",
+    "seguranca": "seguran\u00e7a",
+    "servico": "servi\u00e7o",
+    "servicos": "servi\u00e7os",
+    "microsservico": "microsservi\u00e7o",
+    "microsservicos": "microsservi\u00e7os",
+    "solicitacao": "solicita\u00e7\u00e3o",
+    "solicitacoes": "solicita\u00e7\u00f5es",
+    "solucao": "solu\u00e7\u00e3o",
+    "solucoes": "solu\u00e7\u00f5es",
+    "sustentacao": "sustenta\u00e7\u00e3o",
+    "aceleracao": "acelera\u00e7\u00e3o",
+    "governanca": "governan\u00e7a",
+    "tecnica": "t\u00e9cnica",
+    "tecnicas": "t\u00e9cnicas",
+    "tecnico": "t\u00e9cnico",
+    "tecnicos": "t\u00e9cnicos",
+}
 
 
 class ResumeService:
@@ -216,6 +316,7 @@ class ResumeService:
                     selected_experiences=selected_experiences,
                     prioritized_skills=skills,
                 )
+            generated_content = self._normalize_ptbr_text(self._repair_mojibake(generated_content))
 
             generated_content["educacao"] = educacao
             generated_content["idiomas"] = idiomas
@@ -713,24 +814,24 @@ RETORNE APENAS UM JSON VALIDO.
         base = self._normalize_bullet_text(self._clean_sentence(source))
         theme_map = {
             "arquitetura e integracoes": (
-                "Atuei na estruturacao de fluxos entre servicos e APIs, organizando contratos, integracoes e regras de negocio "
-                f"com apoio de {tech_text}, o que aumentou a consistencia da solucao e facilitou a evolucao do produto."
+                "Atuei na estrutura\u00e7\u00e3o de fluxos entre servi\u00e7os e APIs, organizando contratos, integra\u00e7\u00f5es e regras de neg\u00f3cio "
+                f"com apoio de {tech_text}, o que aumentou a consist\u00eancia da solu\u00e7\u00e3o e facilitou a evolu\u00e7\u00e3o do produto."
             ),
             "implementacao e persistencia": (
-                "Implementei funcionalidades com foco em robustez de backend, modelagem de dados e persistencia, conectando "
-                f"camadas aplicacionais e operacionais com {tech_text} para sustentar entregas confiaveis."
+                "Implementei funcionalidades com foco em robustez de backend, modelagem de dados e persist\u00eancia, conectando "
+                f"camadas aplicacionais e operacionais com {tech_text} para sustentar entregas confi\u00e1veis."
             ),
             "experiencia do usuario e produto": (
-                "Conectei requisitos de produto e experiencia do usuario com implementacao tecnica, aplicando "
-                f"{tech_text} para alinhar backlog, regras de negocio, usabilidade e comportamento da aplicacao com os objetivos de entrega."
+                "Conectei requisitos de produto e experi\u00eancia do usu\u00e1rio com implementa\u00e7\u00e3o t\u00e9cnica, aplicando "
+                f"{tech_text} para alinhar backlog, regras de neg\u00f3cio, usabilidade e comportamento da aplica\u00e7\u00e3o com os objetivos de entrega."
             ),
             "qualidade, entrega e operacao": (
-                "Apoiei a qualidade tecnica com versionamento, testes, revisao de codigo, documentacao e rotinas de entrega, "
-                f"mantendo o ambiente mais previsivel e aderente a praticas modernas em {tech_text}."
+                "Apoiei a qualidade t\u00e9cnica com versionamento, testes, revis\u00e3o de c\u00f3digo, documenta\u00e7\u00e3o e rotinas de entrega, "
+                f"mantendo o ambiente mais previs\u00edvel e aderente a pr\u00e1ticas modernas em {tech_text}."
             ),
             "colaboracao e lideranca tecnica": (
-                "Conduzi alinhamentos tecnicos com times internos, refinando solucoes, analisando impactos e traduzindo necessidades de negocio "
-                f"em implementacoes praticas com {tech_text}, mantendo boa comunicacao com stakeholders e clareza nas decisoes tecnicas."
+                "Conduzi alinhamentos t\u00e9cnicos com times internos, refinando solu\u00e7\u00f5es, analisando impactos e traduzindo necessidades de neg\u00f3cio "
+                f"em implementa\u00e7\u00f5es pr\u00e1ticas com {tech_text}, mantendo boa comunica\u00e7\u00e3o com stakeholders e clareza nas decis\u00f5es t\u00e9cnicas."
             ),
         }
         complement = theme_map.get(theme, "")
@@ -742,8 +843,8 @@ RETORNE APENAS UM JSON VALIDO.
 
     def _fallback_bullet(self, base_experience: dict, tech_text: str, job_keywords: list[str]) -> str:
         return (
-            "Estruturei entregas com foco em confiabilidade, clareza de implementacao e aderencia tecnica, conectando "
-            f"stack, integracoes e rotinas de entrega com {tech_text}, de forma consistente para leitura humana e boa indexacao em ATS."
+            "Estruturei entregas com foco em confiabilidade, clareza de implementa\u00e7\u00e3o e ader\u00eancia t\u00e9cnica, conectando "
+            f"stack, integra\u00e7\u00f5es e rotinas de entrega com {tech_text}, de forma consistente para leitura humana e boa indexa\u00e7\u00e3o em ATS."
         )
 
     def _combine_technologies(self, experience: dict, base_experience: dict, job_keywords: list[str]) -> list[str]:
@@ -776,7 +877,7 @@ RETORNE APENAS UM JSON VALIDO.
             "Postgresql": "PostgreSQL",
             "Mongodb": "MongoDB",
             "React.Js": "React",
-            "Microservices": "Microsserviços",
+            "Microservices": "Microsservi\u00e7os",
         }
         return mapping.get(normalized, normalized)
 
@@ -793,10 +894,10 @@ RETORNE APENAS UM JSON VALIDO.
         company = experience.get("empresa") or base_experience.get("empresa") or "a empresa"
         role = experience.get("cargo") or base_experience.get("cargo") or "a funcao"
         stack = ", ".join(technologies[:5]) if technologies else "stack aderente a vaga"
-        opening = self._clean_sentence(description) or f"Atuacao em {company} como {role}"
+        opening = self._clean_sentence(description) or f"Atua\u00e7\u00e3o em {company} como {role}"
         return (
-            f"{opening}, com foco em entregas de software orientadas a produto e operacao. "
-            f"Experiencia reforcada por implementacoes envolvendo {stack}, integracoes entre servicos, qualidade de codigo e colaboracao com areas internas para evolucao continua da solucao."
+            f"{opening}, com foco em entregas de software orientadas a produto e opera\u00e7\u00e3o. "
+            f"Experi\u00eancia refor\u00e7ada por implementa\u00e7\u00f5es envolvendo {stack}, integra\u00e7\u00f5es entre servi\u00e7os, qualidade de c\u00f3digo e colabora\u00e7\u00e3o com \u00e1reas internas para evolu\u00e7\u00e3o cont\u00ednua da solu\u00e7\u00e3o."
         )
 
     def _clean_sentence(self, value: str) -> str:
@@ -938,7 +1039,7 @@ RETORNE APENAS UM JSON VALIDO.
         years = self._estimate_years_of_experience(user.get("experiencias", []))
         seniority = "Profissional"
         if years >= 6:
-            seniority = "Profissional Senior"
+            seniority = "Profissional S\u00eanior"
         elif years >= 3:
             seniority = "Profissional Pleno"
 
@@ -946,8 +1047,8 @@ RETORNE APENAS UM JSON VALIDO.
         domain = self._infer_domain_from_job(job)
         strengths = self._infer_strengths_from_experiences(experiences)
         return (
-            f"{seniority} em {focus} com {years}+ anos de experiencia atuando em {domain}. "
-            f"Expertise em {top_skills}, com foco em {strengths} e em gerar entregas tecnicamente solidas, legiveis por ATS e convincentes para avaliacao humana."
+            f"{seniority} em {focus} com {years}+ anos de experi\u00eancia atuando em {domain}. "
+            f"Expertise em {top_skills}, com foco em {strengths} e em gerar entregas tecnicamente s\u00f3lidas, leg\u00edveis por ATS e convincentes para avalia\u00e7\u00e3o humana."
         )
 
     def _estimate_years_of_experience(self, experiences: list[dict]) -> int:
@@ -967,12 +1068,12 @@ RETORNE APENAS UM JSON VALIDO.
     def _infer_domain_from_job(self, job: dict) -> str:
         content = f"{job.get('cargo', '')} {job.get('content', '')}".lower()
         if "payment" in content or "pagamento" in content or "pix" in content:
-            return "desenvolvimento de solucoes de pagamento e integracoes de alta disponibilidade"
+            return "desenvolvimento de solu\u00e7\u00f5es de pagamento e integra\u00e7\u00f5es de alta disponibilidade"
         if "frontend" in content or "react" in content or "angular" in content:
-            return "desenvolvimento end-to-end de aplicacoes web com forte interface e integracoes"
+            return "desenvolvimento end-to-end de aplica\u00e7\u00f5es web com forte interface e integra\u00e7\u00f5es"
         if "backend" in content or "api" in content or "micro" in content:
-            return "arquitetura e evolucao de servicos backend, APIs e fluxos de integracao"
-        return "desenvolvimento end-to-end de aplicacoes web escalaveis"
+            return "arquitetura e evolu\u00e7\u00e3o de servi\u00e7os backend, APIs e fluxos de integra\u00e7\u00e3o"
+        return "desenvolvimento end-to-end de aplica\u00e7\u00f5es web escal\u00e1veis"
 
     def _infer_strengths_from_experiences(self, experiences: list[dict]) -> str:
         haystack = " ".join(
@@ -983,15 +1084,15 @@ RETORNE APENAS UM JSON VALIDO.
         ).lower()
         strengths = []
         if any(term in haystack for term in ["api", "integr", "rest", "graphql"]):
-            strengths.append("integracoes e desenho de servicos")
+            strengths.append("integra\u00e7\u00f5es e desenho de servi\u00e7os")
         if any(term in haystack for term in ["aws", "docker", "kubernetes", "cloud", "ci/cd"]):
-            strengths.append("escalabilidade, entrega continua e operacao")
+            strengths.append("escalabilidade, entrega cont\u00ednua e opera\u00e7\u00e3o")
         if any(term in haystack for term in ["react", "frontend", "ux", "interface"]):
-            strengths.append("experiencia de produto e interfaces responsivas")
+            strengths.append("experi\u00eancia de produto e interfaces responsivas")
         if any(term in haystack for term in ["teste", "quality", "qualidade", "review"]):
-            strengths.append("qualidade de codigo e manutencao sustentavel")
+            strengths.append("qualidade de c\u00f3digo e manuten\u00e7\u00e3o sustent\u00e1vel")
         if not strengths:
-            strengths.append("solucoes de software com foco em impacto operacional")
+            strengths.append("solu\u00e7\u00f5es de software com foco em impacto operacional")
         return ", ".join(strengths[:3])
 
     def _score_variant(
@@ -1003,7 +1104,7 @@ RETORNE APENAS UM JSON VALIDO.
     ) -> tuple[float, list[str]]:
         reasons = []
         if not keywords:
-            return 72.0, ["Vaga sem palavras-chave claras; score estimado por consistencia geral."]
+            return 72.0, ["Vaga sem palavras-chave claras; score estimado por consist\u00eancia geral."]
 
         keyword_hits = sum(1 for keyword in keywords if keyword.lower() in " ".join(skills).lower())
         experience_hits = 0
@@ -1033,13 +1134,13 @@ RETORNE APENAS UM JSON VALIDO.
         score = round(min(98.0, 58 + (raw_score * 40)), 1)
 
         if keyword_hits:
-            reasons.append(f"{keyword_hits} requisitos tecnicos foram refletidos nas habilidades.")
+            reasons.append(f"{keyword_hits} requisitos t\u00e9cnicos foram refletidos nas habilidades.")
         if experience_hits:
-            reasons.append(f"{experience_hits} requisitos aparecem nas experiencias selecionadas.")
+            reasons.append(f"{experience_hits} requisitos aparecem nas experi\u00eancias selecionadas.")
         if summary_hits:
             reasons.append("O resumo foi alinhado ao foco da vaga.")
         if not reasons:
-            reasons.append("CV estruturado a partir do perfil ativo, com baixa aderencia detectada aos termos da vaga.")
+            reasons.append("CV estruturado a partir do perfil ativo, com baixa ader\u00eancia detectada aos termos da vaga.")
 
         return score, reasons
 
@@ -1050,7 +1151,55 @@ RETORNE APENAS UM JSON VALIDO.
             return "RISK"
         return "REJECTED"
 
+    def _repair_mojibake(self, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: self._repair_mojibake(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [self._repair_mojibake(item) for item in value]
+        if not isinstance(value, str):
+            return value
+
+        repaired = value
+        for _ in range(2):
+            if not any(marker in repaired for marker in ("Ã", "Â", "â", "\ufffd")):
+                break
+            try:
+                candidate = repaired.encode("latin-1").decode("utf-8")
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                break
+            if candidate == repaired:
+                break
+            repaired = candidate
+        return repaired
+
+    def _normalize_ptbr_text(self, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: self._normalize_ptbr_text(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [self._normalize_ptbr_text(item) for item in value]
+        if not isinstance(value, str):
+            return value
+
+        normalized = value
+
+        def replace_match(match: re.Match[str], replacement: str) -> str:
+            source = match.group(0)
+            if source.isupper():
+                return replacement.upper()
+            if source[:1].isupper():
+                return replacement[:1].upper() + replacement[1:]
+            return replacement
+
+        for source, target in PTBR_NORMALIZATION_MAP.items():
+            normalized = re.sub(
+                rf"(?i)\b{re.escape(source)}\b",
+                lambda match, replacement=target: replace_match(match, replacement),
+                normalized,
+            )
+        return normalized
+
     def _write_docx(self, content: dict, output_path: Path) -> None:
+        content = self._normalize_ptbr_text(self._repair_mojibake(content))
         document = Document()
         self._configure_document(document)
 
@@ -1250,3 +1399,5 @@ RETORNE APENAS UM JSON VALIDO.
         run.append(text_element)
         hyperlink.append(run)
         paragraph._p.append(hyperlink)
+
+

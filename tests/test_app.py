@@ -1,4 +1,6 @@
-from pathlib import Path
+﻿from pathlib import Path
+from zipfile import ZipFile
+import re
 
 from fastapi.testclient import TestClient
 
@@ -21,9 +23,9 @@ def build_user_payload() -> dict:
                 "empresa": "Empresa A",
                 "cargo": "Backend Developer",
                 "periodo": "2022 - Atual",
-                "descricao": "Atuação com Python, FastAPI, Docker e APIs REST.",
+                "descricao": "Atuacao com Python, FastAPI, Docker e APIs REST.",
                 "tecnologias": ["Python", "FastAPI", "Docker"],
-                "realizacoes": ["Reduziu tempo de deploy", "Criou APIs escaláveis"],
+                "realizacoes": ["Reduziu tempo de deploy", "Criei APIs escalaveis"],
             },
             {
                 "empresa": "Empresa B",
@@ -31,18 +33,18 @@ def build_user_payload() -> dict:
                 "periodo": "2020 - 2022",
                 "descricao": "Desenvolvimento com React, Node.js e PostgreSQL.",
                 "tecnologias": ["React", "Node.js", "PostgreSQL"],
-                "realizacoes": ["Entregou painel administrativo"],
+                "realizacoes": ["Entreguei painel administrativo"],
             },
         ],
         "educacao": [
             {
                 "instituicao": "Universidade X",
-                "curso": "Ciência da Computação",
+                "curso": "Ciencia da Computacao",
                 "periodo": "2016 - 2019",
             }
         ],
         "habilidades": ["Python", "FastAPI", "Docker", "React", "Node.js", "PostgreSQL"],
-        "idiomas": [{"idioma": "Inglês", "nivel": "Avançado"}],
+        "idiomas": [{"idioma": "Ingles", "nivel": "Avancado"}],
     }
 
 
@@ -64,9 +66,9 @@ def test_user_and_resume_flow(tmp_path: Path) -> None:
         "content": """
         Cargo: Backend Developer
         Empresa: Tech Corp
-        Local: São Paulo
-        Buscamos alguém com Python, FastAPI, Docker, APIs REST e PostgreSQL.
-        É importante ter boa comunicação e trabalho em equipe.
+        Local: Sao Paulo
+        Buscamos alguem com Python, FastAPI, Docker, APIs REST e PostgreSQL.
+        E importante ter boa comunicacao e trabalho em equipe.
         """,
     }
     job_response = client.post("/api/resume/jobs", json=job_payload)
@@ -101,6 +103,43 @@ def test_user_and_resume_flow(tmp_path: Path) -> None:
     assert saved_files
 
 
+def test_generated_docx_preserves_ptbr_accents(tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+    client = TestClient(
+        create_app(data_file=str(tmp_path / "state.json"), output_dir=str(output_dir), enable_llm=False)
+    )
+
+    payload = build_user_payload()
+    payload["cidade"] = "S\u00e3o Paulo"
+    payload["experiencias"][0]["descricao"] = "Atua\u00e7\u00e3o com integra\u00e7\u00f5es, APIs REST e servi\u00e7os backend."
+    payload["idiomas"] = [{"idioma": "Ingl\u00eas", "nivel": "Avan\u00e7ado"}]
+    user_response = client.post("/api/users", json=payload)
+    assert user_response.status_code == 201
+
+    job_response = client.post(
+        "/api/resume/jobs",
+        json={
+            "input_type": "text",
+            "content": "Cargo: Desenvolvedor Backend\nEmpresa: Tech Corp\nLocal: S\u00e3o Paulo",
+        },
+    )
+    assert job_response.status_code == 200
+
+    generate_response = client.post(f"/api/resume/jobs/{job_response.json()['id']}/generate", json={"count": 1})
+    assert generate_response.status_code == 200
+
+    docx_path = next(output_dir.glob("*.docx"))
+    with ZipFile(docx_path) as archive:
+        document_xml = archive.read("word/document.xml").decode("utf-8")
+
+    text_nodes = re.findall(r"<w:t[^>]*>(.*?)</w:t>", document_xml)
+    rendered_text = " ".join(text_nodes)
+    assert "S\u00e3o Paulo" in rendered_text
+    assert "Atua\u00e7\u00e3o" in rendered_text
+    assert "Ingl\u00eas" in rendered_text
+    assert "Ã" not in rendered_text
+
+
 def test_generate_requires_active_user(tmp_path: Path) -> None:
     client = TestClient(
         create_app(data_file=str(tmp_path / "state.json"), output_dir=str(tmp_path / "output"), enable_llm=False)
@@ -108,7 +147,7 @@ def test_generate_requires_active_user(tmp_path: Path) -> None:
 
     job_response = client.post(
         "/api/resume/jobs",
-        json={"input_type": "text", "content": "Cargo: QA Engineer\nEmpresa: Testes SA\nExperiência com API e automação."},
+        json={"input_type": "text", "content": "Cargo: QA Engineer\nEmpresa: Testes SA\nExperiencia com API e automacao."},
     )
     assert job_response.status_code == 200
     job_id = job_response.json()["id"]
