@@ -73,17 +73,15 @@ def create_llm_for_resume() -> LLMAdapter:
     from core.llm.router import LLMProvider
     
     provider_map = {
-        "ollama": LLMProvider.OLLAMA,
-        "openai": LLMProvider.OPENAI
+        "codex": LLMProvider.CODEX,
+        "local": LLMProvider.CODEX,
     }
     
-    llm_provider = provider_map.get(resume_config.get('llm_provider', 'ollama'), LLMProvider.OLLAMA)
+    llm_provider = provider_map.get(resume_config.get('llm_provider', 'codex'), LLMProvider.CODEX)
     
     config = LLMConfig(
         default_provider=llm_provider,
-        ollama_model=resume_config.get('llm_model', 'llama3.1:8b'),
-        openai_api_key=os.getenv('OPENAI_API_KEY'),  # Read from .env
-        openai_model=resume_config.get('llm_model', 'gpt-4o-mini')
+        codex_model=resume_config.get('llm_model') or None,
     )
     
     logger.info(f"Creating LLM for resume with provider: {llm_provider.value}, model: {resume_config.get('llm_model')}")

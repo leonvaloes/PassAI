@@ -3,9 +3,10 @@ Search Engine - Job Aggregator
 Executes saved search profiles across multiple sources
 """
 import logging
+import re
 import time
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from modules.jobs.models import (
@@ -29,6 +30,7 @@ class SearchEngine:
         # Configuration
         self.max_concurrent_scrapers = 3
         self.timeout_per_job = 120  # 2 minutes
+        self.max_job_age_days = 14
     
     def execute_search(
         self,
@@ -76,6 +78,24 @@ class SearchEngine:
                     # Basic cleanup only
                     from modules.jobs.enricher import extract_basic_info
                     enriched = extract_basic_info(job_data)
+
+                    if not self._is_open_for_applications(enriched):
+                        logger.info(
+                            "Skipping closed job: %s - %s",
+                            enriched.get("title"),
+                            enriched.get("url"),
+                        )
+                        stats.jobsFailed += 1
+                        continue
+
+                    if not self._is_recent_job(enriched):
+                        logger.info(
+                            "Skipping stale job: %s - %s",
+                            enriched.get("title"),
+                            enriched.get("url"),
+                        )
+                        stats.jobsFailed += 1
+                        continue
                     
                     # FILTER: Only save jobs from Brazil (if profile has Brazil country filter)
                     if profile.filters.location and profile.filters.location.country == 'Brazil':
@@ -119,6 +139,7 @@ class SearchEngine:
                         company=enriched.get('company'),
                         description=enriched.get('description'),
                         location=enriched.get('location'),
+                        postedAt=enriched.get('postedAt'),
                         techKeywords=enriched.get('techKeywords', []),
                         seniority=enriched.get('seniority'),
                         mustHave=enriched.get('mustHave', []),
@@ -234,6 +255,111 @@ class SearchEngine:
         
         # Limit to maxJobsPerRun
         return unique_urls[:profile.maxJobsPerRun]
+
+    def _is_open_for_applications(self, job_data: Dict[str, Any]) -> bool:
+        """
+        Return False when the posting clearly no longer accepts applications.
+
+        Scrapers should still try to return active jobs only, but this final gate
+        catches public pages that remain indexed after closing.
+        """
+        status = str(job_data.get("status", "")).lower()
+        if status in {"expired", "filled", "removed", "closed"}:
+            return False
+
+        raw_text = " ".join(
+            str(job_data.get(key) or "")
+            for key in ("rawText", "description", "title")
+        ).lower()
+
+        closed_phrases = [
+            "vaga encerrada",
+            "vaga expirada",
+            "vaga fechada",
+            "posição encerrada",
+            "processo seletivo encerrado",
+            "não aceita mais candidaturas",
+            "não estamos mais aceitando candidaturas",
+            "não estamos mais recebendo candidaturas",
+            "não é mais possível se candidatar",
+            "applications are no longer being accepted",
+            "no longer accepting applications",
+            "job is no longer available",
+            "this job is no longer available",
+            "position has been filled",
+            "não encontramos essa vaga",
+            "esta vaga não está mais disponível",
+        ]
+        if any(phrase in raw_text for phrase in closed_phrases):
+            return False
+
+        open_phrases = [
+            "candidatar-se",
+            "candidate-se",
+            "candidatar",
+            "apply now",
+            "easy apply",
+            "cadastre-se para se candidatar",
+        ]
+        if any(phrase in raw_text for phrase in open_phrases):
+            return True
+
+        # Unknown status is allowed, but with lower confidence. Some Brazilian
+        # portals hide application buttons behind scripts or login walls.
+        return True
+
+    def _is_recent_job(self, job_data: Dict[str, Any]) -> bool:
+        """Keep only jobs posted recently enough for application priority."""
+        posted_at = job_data.get("postedAt")
+        if isinstance(posted_at, datetime):
+            return posted_at >= datetime.utcnow() - timedelta(days=self.max_job_age_days)
+
+        raw_text = " ".join(
+            str(job_data.get(key) or "")
+            for key in ("rawText", "description", "title")
+        ).lower()
+
+        age_days = self._extract_age_days(raw_text)
+        if age_days is None:
+            return True
+
+        return age_days <= self.max_job_age_days
+
+    def _extract_age_days(self, text: str) -> Optional[int]:
+        """Extract relative age from common PT-BR/EN job-board labels."""
+        text = text.lower()
+
+        if any(token in text for token in ["hoje", "today", "agora", "just now"]):
+            return 0
+        if any(token in text for token in ["ontem", "yesterday"]):
+            return 1
+
+        patterns = [
+            (r"há\s+(\d+)\s+dias?", 1),
+            (r"(\d+)\s+dias?\s+atrás", 1),
+            (r"(\d+)\s+days?\s+ago", 1),
+            (r"há\s+(\d+)\s+semanas?", 7),
+            (r"(\d+)\s+semanas?\s+atrás", 7),
+            (r"(\d+)\s+weeks?\s+ago", 7),
+            (r"há\s+(\d+)\s+mes(?:es)?", 30),
+            (r"(\d+)\s+months?\s+ago", 30),
+        ]
+
+        matches = []
+        for pattern, multiplier in patterns:
+            for match in re.finditer(pattern, text):
+                try:
+                    matches.append((match.start(), int(match.group(1)) * multiplier))
+                except ValueError:
+                    continue
+
+        if not matches:
+            return None
+
+        # Use the first age shown on the page. LinkedIn and other aggregators
+        # include "similar jobs" later in the HTML, so picking the newest match
+        # would let stale primary postings slip through.
+        return sorted(matches, key=lambda item: item[0])[0][1]
     
     def _scrape_jobs_parallel(
         self,

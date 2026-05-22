@@ -1,0 +1,116 @@
+--- PAGE 1 ---
+Leonardo Valoes Novaes Ribeiro 
+Desenvolvedor Full-Stack 
+Presidente Prudente – SP 
+leonvaloesnovaes@gmail.com 
+Telefone: (18) 99745-0885 
+https://linkedin.com/in/leonardo-valoes-ribeiro 
+https://github.com/leonvaloes 
+RESUMO 
+Profissional de Engenharia de Software com 4 anos de experiência focado em arquiteturas em 
+nuvem, liderando iniciativas de desenvolvimento para sistemas escaláveis e confiáveis. Expertise em 
+Java, AWS, CI/CD, Kubernetes, e integração de APIs, sempre visando a melhoria da qualidade e 
+eficiência operacional. 
+HABILIDADES 
+Java 
+AWS 
+Kubernetes 
+CI/CD 
+PostgreSQL 
+Node.js 
+APIs REST 
+Microsserviços 
+Docker 
+React 
+Git 
+RabbitMQ 
+FORMAÇÃO 
+Sistemas de Informação – Unoeste 
+Jan/2022 - Dez/2026 
+EXPERIÊNCIA PROFISSIONAL 
+Security Segurança e Serviços 
+Desenvolvedor Full-Stack 
+Janeiro de 2025 - atual 
+•  Desenvolvi uma aplicação robusta utilizando Java Spring Boot e PostgreSQL que reduziu 
+significativamente o tempo de processamento de aprovações, melhorando a eficiência dos fluxos 
+internos. Atuei na estruturação de fluxos entre serviços e APIs, organizando contratos, integrações 
+e regras de negócio com apoio de Java, React, Node.js, Spring, Spring Boot, AWS, o que aumentou 
+a consistência da solução e facilitou a evolução do produto. 
+•  Implementei integrações em nuvem na AWS, garantindo escalabilidade e resiliência na 
+arquitetura, contribui para a qualidade final do produto. Implementei funcionalidades com foco em
+
+--- PAGE 2 ---
+robustez de backend, modelagem de dados e persistência, conectando camadas aplicacionais e 
+operacionais com Java, React, Node.js, Spring, Spring Boot, AWS para sustentar entregas 
+confiáveis. 
+•  Estruturei um workflow com Claude Code para análise de impacto e refatoração, otimização de 
+entregas e melhoria contínua na qualidade do código. Conectei requisitos de produto e experiência 
+do usuário com implementação técnica, aplicando Java, React, Node.js, Spring, Spring Boot, AWS 
+para alinhar backlog, regras de negócio, usabilidade e comportamento da aplicação com os 
+objetivos de entrega. 
+•  Conduzi workshops e relatórios técnicos para a alta direção, promovendo uma cultura de 
+colaboração e transparência nas decisões tecnológicas do time. Apoiei a qualidade técnica com 
+versionamento, testes, revisão de código, documentação e rotinas de entrega, mantendo o 
+ambiente mais previsível e aderente a práticas modernas em Java, React, Node.js, Spring, Spring 
+Boot, AWS. 
+•  Desenvolvi aplicação completa com Java Spring Boot e PostgreSQL para reduzir tempo de 
+processamento de aprovações. Conduzi alinhamentos técnicos com times internos, refinando 
+soluções, analisando impactos e traduzindo necessidades de negócio em implementações práticas 
+com Java, React, Node.js, Spring, Spring Boot, AWS, mantendo boa comunicação com 
+stakeholders e clareza nas decisões técnicas. 
+iPag Pagamentos Digitais 
+Desenvolvedor Full-Stack 
+Abril de 2024 - Janeiro de 2025 
+•  Desenvolvi um sistema de pagamentos eficiente que suportou transações de cartão, boleto e PIX, 
+utilizando Node.js e PostgreSQL, garantindo segurança e performance. Atuei na estruturação de 
+fluxos entre serviços e APIs, organizando contratos, integrações e regras de negócio com apoio de 
+React, Node.js, Sql, PostgreSQL, Rabbitmq, CI/CD, o que aumentou a consistência da solução e 
+facilitou a evolução do produto. 
+•  Implementei uma arquitetura de microsserviços com RabbitMQ para comunicação assíncrona, 
+melhorando a escalabilidade e a resposta do sistema em picos de acesso. Implementei 
+funcionalidades com foco em robustez de backend, modelagem de dados e persistência, 
+conectando camadas aplicacionais e operacionais com React, Node.js, Sql, PostgreSQL, Rabbitmq, 
+CI/CD para sustentar entregas confiáveis. 
+•  Participei ativamente da implantação de processos de CI/CD com GitHub Actions, resultando em 
+uma redução de 50% no tempo de entrega e aumento significativo da confiabilidade nas 
+implantações. Conectei requisitos de produto e experiência do usuário com implementação técnica, 
+aplicando React, Node.js, Sql, PostgreSQL, Rabbitmq, CI/CD para alinhar backlog, regras de 
+negócio, usabilidade e comportamento da aplicação com os objetivos de entrega. 
+•  Criei interfaces em React que elevaram a performance em 70%, focando na experiência do 
+usuário e na usabilidade das aplicações. Apoiei a qualidade técnica com versionamento, testes, 
+revisão de código, documentação e rotinas de entrega, mantendo o ambiente mais previsível e 
+aderente a práticas modernas em React, Node.js, Sql, PostgreSQL, Rabbitmq, CI/CD. 
+•  Desenvolvi sistema de pagamentos com suporte a cartão, boleto e PIX. Conduzi alinhamentos 
+técnicos com times internos, refinando soluções, analisando impactos e traduzindo necessidades 
+de negócio em implementações práticas com React, Node.js, Sql, PostgreSQL, Rabbitmq, CI/CD, 
+mantendo boa comunicação com stakeholders e clareza nas decisões técnicas.
+
+--- PAGE 3 ---
+Security Segurança e Serviços 
+Desenvolvedor Full-Stack 
+Abril de 2022 - Marco de 2024 
+•  Arquitetei soluções em microsserviços integrados ao ERP Protheus, que eliminou 90% dos erros 
+manuais, melhorando a precisão e eficiência dos processos. Atuei na estruturação de fluxos entre 
+serviços e APIs, organizando contratos, integrações e regras de negócio com apoio de AWS, 
+Docker, CI/CD, Git, Microsserviços, SOLID, o que aumentou a consistência da solução e facilitou a 
+evolução do produto. 
+•  Automatizei processos operacionais utilizando práticas de CI/CD e deploy automatizado em AWS 
+com Docker, resultando em maior agilidade e confiabilidade nas operações. Implementei 
+funcionalidades com foco em robustez de backend, modelagem de dados e persistência, 
+conectando camadas aplicacionais e operacionais com AWS, Docker, CI/CD, Git, Microsserviços, 
+SOLID para sustentar entregas confiáveis. 
+•  Atuei na sustentação e resolução de incidentes em produção, implementando práticas de 
+observabilidade que elevaram a qualidade do sistema com monitoramento proativo. Conectei 
+requisitos de produto e experiência do usuário com implementação técnica, aplicando AWS, 
+Docker, CI/CD, Git, Microsserviços, SOLID para alinhar backlog, regras de negócio, usabilidade e 
+comportamento da aplicação com os objetivos de entrega. 
+•  Colaborei com equipes multifuncionais para promover melhorias contínuas com foco em 
+qualidade de código, estabilidade e escalabilidade das soluções criadas. Apoiei a qualidade técnica 
+com versionamento, testes, revisão de código, documentação e rotinas de entrega, mantendo o 
+ambiente mais previsível e aderente a práticas modernas em AWS, Docker, CI/CD, Git, 
+Microsserviços, SOLID. 
+•  Arquitetei solução em microsserviços com foco em manutenção e evolução contínua. Conduzi 
+alinhamentos técnicos com times internos, refinando soluções, analisando impactos e traduzindo 
+necessidades de negócio em implementações práticas com AWS, Docker, CI/CD, Git, 
+Microsserviços, SOLID, mantendo boa comunicação com stakeholders e clareza nas decisões 
+técnicas.

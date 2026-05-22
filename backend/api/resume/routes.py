@@ -469,7 +469,7 @@ async def generate_more_variants(job_id: str, count: int = 3):
         if not variant_generator.llm or not hasattr(variant_generator.llm, 'llm'):
             raise HTTPException(
                 status_code=503, 
-                detail="LLM service not available. Please ensure Ollama is running."
+                detail="Codex service not available. Please ensure Codex CLI is installed and authenticated."
             )
         
         # Verify job exists
@@ -545,7 +545,7 @@ async def generate_more_variants(job_id: str, count: int = 3):
             logger.error(f"Variant generation failed: {e}", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to generate variants: {str(e)}. Is Ollama running?"
+                detail=f"Failed to generate variants: {str(e)}. Is Codex CLI available?"
             )
         
         logger.info(f"Incremental generation complete: +{len(generated)} new variants")

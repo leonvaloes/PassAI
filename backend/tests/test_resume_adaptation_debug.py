@@ -24,8 +24,8 @@ from backend.modules.resume.llm_adapter import LLMAdapter
 # Mock classes
 class MockLLMRouter:
     class MockConfig:
-        ollama_base_url = "http://localhost:11434"
-        ollama_model = "llama3.1:8b"
+        codex_command = "codex"
+        codex_model = None
     config = MockConfig()
 
 def test_debug_generation():

@@ -48,6 +48,7 @@ class IndeedScraper(BaseScraper):
                 params['remotejob'] = '032b3046-06a3-4876-8dfd-474eb5e7ed11'
             
             params['sort'] = 'date'
+            params['fromage'] = '14'
             
             search_url = base_url + '?' + urlencode(params)
             logger.info(f"Indeed search: {search_url}")

@@ -199,9 +199,14 @@ class AICopilotApp:
         logger.info("  ✅ ASR Pipeline")
         
         # LLM Router
+        llm_settings = self.config.get('llm', {})
+        codex_settings = llm_settings.get('codex', {})
         llm_config = LLMConfig(
-            default_provider=LLMProvider.OLLAMA,
-            ollama_model=self.config.get('llm', {}).get('model', 'llama3.1-8b-ctx32k:latest')
+            default_provider=LLMProvider.CODEX,
+            codex_command=codex_settings.get('command', 'codex'),
+            codex_model=codex_settings.get('model') or llm_settings.get('model'),
+            codex_profile=codex_settings.get('profile'),
+            codex_sandbox=codex_settings.get('sandbox', 'read-only')
         )
         self.llm_router = LLMRouter(config=llm_config)
         logger.info("  ✅ LLM Router")

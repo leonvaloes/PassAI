@@ -1,4 +1,4 @@
-"""
+﻿"""
 User Management API Routes
 """
 import logging
@@ -72,13 +72,13 @@ async def create_user(user_data: UserProfileCreate):
     result = db.db.user_profiles.insert_one(user_dict)
     user_id = str(result.inserted_id)
     
-    logger.info(f"✅ Created user profile: {user_data.profile_name} (ID: {user_id})")
+    logger.info(f"âœ… Created user profile: {user_data.profile_name} (ID: {user_id})")
     
     # If this is the first/only user, set as active
     user_count = db.db.user_profiles.count_documents({})
     if user_count == 1:
         db.set_active_user_id(user_id)
-        logger.info(f"🌟 Set first user as active: {user_id}")
+        logger.info(f"ðŸŒŸ Set first user as active: {user_id}")
     
     # Fetch and return
     user_doc = db.db.user_profiles.find_one({"_id": result.inserted_id})
@@ -132,7 +132,7 @@ async def update_user(user_id: str, user_data: UserProfileUpdate):
         {"$set": update_dict}
     )
     
-    logger.info(f"✅ Updated user profile: {user_id}")
+    logger.info(f"âœ… Updated user profile: {user_id}")
     
     # Fetch and return
     user_doc = db.db.user_profiles.find_one({"_id": obj_id})
@@ -158,11 +158,11 @@ async def delete_user(user_id: str):
     active_user_id = db.get_active_user_id()
     if active_user_id == user_id:
         db.db.app_config.delete_one({"_id": "active_user_config"})
-        logger.info("⚠️  Deleted active user - active user cleared")
+        logger.info("âš ï¸  Deleted active user - active user cleared")
     
     # Delete
     db.db.user_profiles.delete_one({"_id": obj_id})
-    logger.info(f"✅ Deleted user profile: {user_id}")
+    logger.info(f"âœ… Deleted user profile: {user_id}")
 
 
 @router.get("/active/current", response_model=UserProfileResponse)
@@ -177,7 +177,7 @@ async def get_active_user():
         if len(users) == 1:
             user_id = str(users[0]["_id"])
             db.set_active_user_id(user_id)
-            logger.info(f"🌟 Auto-selected only user as active: {user_id}")
+            logger.info(f"ðŸŒŸ Auto-selected only user as active: {user_id}")
             return _user_to_response(users[0])
         
         raise HTTPException(404, "No active user set. Please select a user first.")
@@ -244,11 +244,11 @@ async def extract_profile_with_ai(request: AIExtractRequest):
     - Skills
     - Languages
     """
-    logger.info(f"🤖 AI extraction requested ({len(request.text)} chars)")
-    logger.info(f"📝 Request type: {type(request)}, text type: {type(request.text)}")
+    logger.info(f"ðŸ¤– AI extraction requested ({len(request.text)} chars)")
+    logger.info(f"ðŸ“ Request type: {type(request)}, text type: {type(request.text)}")
     
     # Build extraction prompt
-    logger.info("📝 Building prompt...")
+    logger.info("ðŸ“ Building prompt...")
     prompt = f"""EXTRACT DATA FROM CV AND RETURN ONLY JSON.
 CRITICAL: FOR DESCRIPTIONS, YOU MUST COPY THE TEXT EXACTLY AS APPEARS IN THE INPUT. DO NOT SUMMARIZE. DO NOT OMIT DETAILS.
 NO EXPLANATIONS. NO MARKDOWN. JUST JSON.
@@ -288,35 +288,17 @@ RETURN ONLY THE JSON OBJECT ABOVE WITH REAL DATA. START WITH {{ AND END WITH }}.
 JSON:"""
 
     try:
-        logger.info("🤖 Calling Ollama directly for extraction...")
+        logger.info("Calling Codex for extraction...")
         
-        # Call Ollama API directly (LLMRouter.generate() has bugs with conversation_history)
-        import requests
-        ollama_response = requests.post(
-            'http://localhost:11434/api/generate',
-            json={
-                'model': 'llama3.1:8b',
-                'prompt': prompt,
-                'stream': False,
-                'options': {
-                    'temperature': 0.2,
-                    'num_predict': 9000
-                }
-            },
-            timeout=60
-        )
+        llm_response = llm_router.generate(prompt, temperature=0.2, max_tokens=9000)
         
-        if ollama_response.status_code != 200:
-            logger.error(f"❌ Ollama returned {ollama_response.status_code}")
-            raise HTTPException(500, "Erro ao chamar Ollama")
         
-        llm_response = ollama_response.json().get('response', '')
         
         if not llm_response or not isinstance(llm_response, str):
-            logger.error(f"❌ Invalid LLM response type: {type(llm_response)}")
-            raise HTTPException(500, "IA não retornou resposta válida")
+            logger.error(f"âŒ Invalid LLM response type: {type(llm_response)}")
+            raise HTTPException(500, "IA nÃ£o retornou resposta vÃ¡lida")
         
-        logger.info(f"🤖 LLM raw response ({len(llm_response)} chars): {llm_response[:500]}...")
+        logger.info(f"ðŸ¤– LLM raw response ({len(llm_response)} chars): {llm_response[:500]}...")
         
         # Clean response (sometimes LLM adds markdown)
         cleaned_response = llm_response.strip()
@@ -328,23 +310,23 @@ JSON:"""
             cleaned_response = cleaned_response[:-3]
         cleaned_response = cleaned_response.strip()
         
-        logger.info(f"🧹 Cleaned response: {cleaned_response[:300]}...")
+        logger.info(f"ðŸ§¹ Cleaned response: {cleaned_response[:300]}...")
         
         # Parse JSON
         try:
             extracted_data = json.loads(cleaned_response)
         except json.JSONDecodeError as e:
-            logger.error(f"❌ JSON parse failed: {e}")
+            logger.error(f"âŒ JSON parse failed: {e}")
             logger.error(f"Raw response was: {llm_response}")
             raise HTTPException(
                 500,
-                f"IA não retornou JSON válido. Tente reformular o texto ou use um formato mais simples."
+                f"IA nÃ£o retornou JSON vÃ¡lido. Tente reformular o texto ou use um formato mais simples."
             )
         
         # Validate it's a dict
         if not isinstance(extracted_data, dict):
-            logger.error(f"❌ Expected dict, got {type(extracted_data)}: {extracted_data}")
-            raise HTTPException(500, "IA retornou formato inválido")
+            logger.error(f"âŒ Expected dict, got {type(extracted_data)}: {extracted_data}")
+            raise HTTPException(500, "IA retornou formato invÃ¡lido")
         
         # Validate and convert to schema objects
         experiencias = [Experience(**exp) for exp in extracted_data.get("experiencias", [])]
@@ -352,7 +334,7 @@ JSON:"""
         habilidades = extracted_data.get("habilidades", [])
         idiomas = [Language(**lang) for lang in extracted_data.get("idiomas", [])]
         
-        logger.info(f"✅ Extracted: {len(experiencias)} exp, {len(educacao)} edu, {len(habilidades)} skills")
+        logger.info(f"âœ… Extracted: {len(experiencias)} exp, {len(educacao)} edu, {len(habilidades)} skills")
         
         return AIExtractResponse(
             experiencias=experiencias,
@@ -360,18 +342,18 @@ JSON:"""
             habilidades=habilidades,
             idiomas=idiomas,
             success=True,
-            message=f"Extraído: {len(experiencias)} experiências, {len(educacao)} formações, {len(habilidades)} habilidades"
+            message=f"ExtraÃ­do: {len(experiencias)} experiÃªncias, {len(educacao)} formaÃ§Ãµes, {len(habilidades)} habilidades"
         )
         
     except json.JSONDecodeError as e:
-        logger.error(f"❌ JSON parse error: {e}")
+        logger.error(f"âŒ JSON parse error: {e}")
         logger.error(f"LLM response was: {llm_response}")
         raise HTTPException(
             500,
-            f"IA não retornou JSON válido. Tente reformular o texto ou use um formato mais simples."
+            f"IA nÃ£o retornou JSON vÃ¡lido. Tente reformular o texto ou use um formato mais simples."
         )
     except Exception as e:
         import traceback
-        logger.error(f"❌ AI extraction error: {e}")
+        logger.error(f"âŒ AI extraction error: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(500, f"Erro na extração: {str(e)}")
+        raise HTTPException(500, f"Erro na extraÃ§Ã£o: {str(e)}")

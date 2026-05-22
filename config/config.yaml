@@ -2,10 +2,12 @@
 # Otimizado para RTX 4070 Super
 
 llm:
-  default_provider: "local"
-  local:
-    base_url: "http://localhost:11434"
-    model: "llama3.1:8b"
+  default_provider: "codex"
+  codex:
+    command: "codex"
+    model: null
+    profile: null
+    sandbox: "read-only"
 
 audio:
   sample_rate: 16000

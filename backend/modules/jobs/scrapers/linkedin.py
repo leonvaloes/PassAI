@@ -79,7 +79,7 @@ class LinkedInScraper(BaseScraper):
                     if loc_parts:
                         params['location'] = ', '.join(loc_parts)
             
-            params['f_TPR'] = 'r2592000'  # Last 30 days
+            params['f_TPR'] = 'r1209600'  # Last 14 days
             
             if filters.get('modality') == 'remote':
                 params['f_WT'] = '2'
@@ -251,7 +251,7 @@ class LinkedInScraper(BaseScraper):
                     if loc_parts:
                         params['location'] = ', '.join(loc_parts)
             
-            params['f_TPR'] = 'r2592000'  # Last 30 days
+            params['f_TPR'] = 'r1209600'  # Last 14 days
             if filters.get('modality') == 'remote':
                 params['f_WT'] = '2'
             params['sortBy'] = 'DD'  # Sort by date

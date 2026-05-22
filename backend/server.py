@@ -80,7 +80,15 @@ class SimpleBackend:
         self.asr = ASRPipeline(config=ASRConfig(model_size='base', language='pt'))
         
         # LLM
-        self.llm_router = LLMRouter(config=LLMConfig(default_provider=LLMProvider.OLLAMA))
+        llm_settings = self.config.get('llm', {})
+        codex_settings = llm_settings.get('codex', {})
+        self.llm_router = LLMRouter(config=LLMConfig(
+            default_provider=LLMProvider.CODEX,
+            codex_command=codex_settings.get('command', 'codex'),
+            codex_model=codex_settings.get('model') or llm_settings.get('model'),
+            codex_profile=codex_settings.get('profile'),
+            codex_sandbox=codex_settings.get('sandbox', 'read-only')
+        ))
         
         # Vision AI
         self.vision_processor = VisionProcessor()
@@ -405,7 +413,7 @@ Now answer the user's original question based on this new information."""
             logger.error(f"Chat error: {e}", exc_info=True)
             
             # Send helpful error message to user
-            error_msg = "⚠️ LLM não disponível. Verifique se o Ollama está rodando (http://localhost:11434) ou configure OpenAI API key."
+            error_msg = "⚠️ Codex não disponível. Verifique se o Codex CLI está instalado e autenticado."
             self._send_ws({
                 "type": "ai_chat_response",
                 "data": {"text": error_msg}
